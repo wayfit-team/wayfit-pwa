@@ -2,7 +2,8 @@ import type { Coupon, DailyStat, LinkedDevice, OwnerStore } from '../api/types'
 
 /**
  * 백엔드 연동 전 목 데이터. 데모 시나리오:
- * - 연결 코드 12345678 = 정상, 00000000 = 만료, 11111111 = 이미 사용
+ * - 연결 코드: 차 화면에 뜬 아무 8자리 코드나 연결된다 (백엔드가 없어 차와 코드를 맞출 수 없으므로)
+ *   단, 오류 화면 시연용: 00000000 = 만료, 11111111 = 이미 사용, 99999999 = 없는 코드
  * - 매장 PIN 1234, 5회 틀리면 15분 잠금
  * - 사장님 owner@wayfit.app / wayfit1234
  */
@@ -10,6 +11,7 @@ export const DEMO = {
   validCode: '12345678',
   expiredCode: '00000000',
   usedCode: '11111111',
+  unknownCode: '99999999',
   storePin: '1234',
   ownerEmail: 'owner@wayfit.app',
   ownerPassword: 'wayfit1234',

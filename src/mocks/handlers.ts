@@ -43,7 +43,7 @@ export const handlers = [
     if (!code || !/^\d{8}$/.test(code)) return fail(400, 'VALIDATION_FAILED', '8자리 숫자 코드')
     if (code === DEMO.expiredCode) return fail(410, 'PAIRING_CODE_EXPIRED', '만료된 코드')
     if (db.usedCodes.has(code)) return fail(409, 'PAIRING_CODE_USED', '이미 사용된 코드')
-    if (code !== DEMO.validCode) return fail(404, 'NOT_FOUND', '없는 코드')
+    if (code === DEMO.unknownCode) return fail(404, 'PAIRING_CODE_NOT_FOUND', '없는 코드')
     // 같은 사용자가 다시 연결하면 기존 토큰 유지 (멱등)
     const token = bearer(request) && isUser(request) ? bearer(request)! : `user-${randomId()}`
     db.userTokens.add(token)

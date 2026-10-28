@@ -31,6 +31,16 @@ describe('페어링 (Spec REQ-B15, B16, EDGE-B5)', () => {
     await expectApiError(api.claimPairing(DEMO.usedCode), 409, 'PAIRING_CODE_USED')
   })
 
+  it('차 화면에 뜬 아무 8자리 코드나 연결된다 (백엔드 연동 전 목)', async () => {
+    const { userToken } = await api.claimPairing('90261712')
+    expect(userToken).toMatch(/^user-/)
+  })
+
+  it('없는 코드면 코드를 다시 확인하라고 안내', async () => {
+    const e = await expectApiError(api.claimPairing(DEMO.unknownCode), 404, 'PAIRING_CODE_NOT_FOUND')
+    expect(errorMessage(e)).toContain('8자리 코드를 다시 확인')
+  })
+
   it('토큰 없이 쿠폰을 보면 401', async () => {
     await expectApiError(api.myCoupons(), 401, 'UNAUTHORIZED')
   })

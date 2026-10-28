@@ -24,6 +24,7 @@ export class OfflineError extends Error {
 const MESSAGES: Record<string, string> = {
   PAIRING_CODE_EXPIRED: '연결 코드가 만료됐어요. 차 화면에서 새 코드를 받아주세요',
   PAIRING_CODE_USED: '이미 사용된 연결 코드예요. 차 화면에서 새 코드를 받아주세요',
+  PAIRING_CODE_NOT_FOUND: '맞는 연결 코드가 없어요. 차 화면의 8자리 코드를 다시 확인해 주세요',
   NOT_FOUND: '찾을 수 없어요',
   UNAUTHORIZED: '다시 연결이 필요해요',
   PIN_INVALID: 'PIN이 맞지 않아요',
