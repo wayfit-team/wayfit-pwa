@@ -24,6 +24,15 @@ function isOwner(request: Request) {
   return bearer(request) === db.ownerToken
 }
 
+/**
+ * crypto.randomUUID 는 보안 출처(https·localhost)에서만 있다.
+ * 폰으로 같은 와이파이의 http://192.168.x.x:5173 에 접속하면 없어서 500 이 났다 → 대체 생성
+ */
+function randomId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 const publicCoupon = ({ storeId: _storeId, ...coupon }: (typeof db.coupons)[number]) => coupon
 
 export const handlers = [
@@ -36,7 +45,7 @@ export const handlers = [
     if (db.usedCodes.has(code)) return fail(409, 'PAIRING_CODE_USED', '이미 사용된 코드')
     if (code !== DEMO.validCode) return fail(404, 'NOT_FOUND', '없는 코드')
     // 같은 사용자가 다시 연결하면 기존 토큰 유지 (멱등)
-    const token = bearer(request) && isUser(request) ? bearer(request)! : `user-${crypto.randomUUID()}`
+    const token = bearer(request) && isUser(request) ? bearer(request)! : `user-${randomId()}`
     db.userTokens.add(token)
     return HttpResponse.json({ userToken: token })
   }),
