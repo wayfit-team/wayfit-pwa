@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/*
+ * 디자인 토큰 — 규칙은 docs/DESIGN_SYSTEM.md
+ * 차량 앱(다크)과 같은 민트 브랜드를 쓰되, 매장 계산대의 밝은 조명에서 읽히도록 밝은 고대비 테마
+ */
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Apple SD Gothic Neo",
+    "Noto Sans KR", sans-serif;
+
+  /* Brand — 민트 하나 */
+  --color-brand: #2fd8a3;
+  --color-brand-strong: #0e8f67; /* 흰 바탕 위 글자용 (대비 4.5:1 이상) */
+  --color-brand-soft: #e3f8f0;
+  --color-on-brand: #032a1c;
+
+  /* Ink — 중립 하나 */
+  --color-bg: #f6f8f9;
+  --color-surface: #ffffff;
+  --color-sunken: #eef1f3;
+  --color-line: #dfe3e8;
+  --color-ink: #12161b;
+  --color-ink-2: #4b5563;
+  --color-ink-3: #8a93a0;
+
+  /* 의미 색 — 정해진 자리에서만 */
+  --color-amber: #b26b00;
+  --color-amber-soft: #fff4e0;
+  --color-rose: #d92d4b;
+  --color-rose-soft: #fdecef;
+
+  /* 곡률 4단계 */
+  --radius-sm: 12px;
+  --radius-btn: 16px;
+  --radius-card: 24px;
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  @apply bg-bg text-ink font-sans antialiased;
+  word-break: keep-all;
+}
