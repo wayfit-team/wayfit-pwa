@@ -9,8 +9,9 @@ export function KakaoLoginButton({ returnTo, label = '카카오 로그인' }: { 
 
   const onClick = () => {
     const start = startKakaoLogin(returnTo)
-    if (start.kind === 'external') window.location.assign(start.url)
-    else if (start.kind === 'internal') navigate(start.path)
+    // 로그인 전 화면(/pair?code= 등)이 방문 기록에 남아 뒤로가기로 재실행되지 않도록 덮어쓴다
+    if (start.kind === 'external') window.location.replace(start.url)
+    else if (start.kind === 'internal') navigate(start.path, { replace: true })
     else setUnconfigured(true)
   }
 

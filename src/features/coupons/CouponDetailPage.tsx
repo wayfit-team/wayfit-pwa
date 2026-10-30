@@ -1,13 +1,15 @@
-import { ArrowLeft, BadgeCheck, Clock } from 'lucide-react'
+import { ArrowLeft, BadgeCheck, Clock, Ticket as TicketIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { useCoupons } from '../../api/queries'
 import type { Coupon } from '../../api/types'
+import { useIsSignedIn } from '../../lib/auth'
 import { daysLeftLabel, effectiveStatus, formatCode, formatDateTime } from '../../lib/coupon'
 import { Button } from '../../ui/Button'
 import { Sheet } from '../../ui/Dialog'
 import { OfflineBanner } from '../../ui/OfflineBanner'
-import { Badge, Page, Skeleton } from '../../ui/Surfaces'
+import { Badge, EmptyState, Page, Skeleton } from '../../ui/Surfaces'
+import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 import { PinPad } from './PinPad'
 import { RedeemDone } from './RedeemDone'
 
@@ -15,6 +17,7 @@ import { RedeemDone } from './RedeemDone'
 export function CouponDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const signedIn = useIsSignedIn()
   const coupons = useCoupons()
   const [pinOpen, setPinOpen] = useState(false)
   const [done, setDone] = useState<Coupon | null>(null)
@@ -24,6 +27,23 @@ export function CouponDetailPage() {
       <ArrowLeft size={24} />
     </Link>
   )
+
+  if (!signedIn) {
+    return (
+      <Page right={back}>
+        <EmptyState
+          icon={<TicketIcon size={32} />}
+          title="카카오로 로그인하고 쿠폰을 확인해요"
+          body="가는 길에 받은 쿠폰을 매장에서 바로 쓸 수 있어요"
+          action={
+            <div className="w-full max-w-xs">
+              <KakaoLoginButton returnTo={id ? `/coupons/${id}` : '/coupons'} />
+            </div>
+          }
+        />
+      </Page>
+    )
+  }
 
   if (coupons.isPending) {
     return (

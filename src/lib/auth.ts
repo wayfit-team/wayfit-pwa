@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react'
  */
 const SESSION_KEY = 'wf.session'
 export const QUERY_CACHE_KEY = 'wf.queryCache'
-/** 세션이 지워졌을 때 메모리의 쿼리 캐시도 비우도록 main.tsx 가 듣는다 */
+/** 세션이 지워졌거나 다른 탭에서 바뀌었을 때 메모리의 쿼리 캐시도 비우도록 main.tsx 가 듣는다 */
 export const SESSION_CLEARED_EVENT = 'wf:session-cleared'
 
 function read(key: string): string | null {
@@ -30,16 +30,20 @@ function write(key: string, value: string | null) {
 const listeners = new Set<() => void>()
 const notify = () => listeners.forEach((listener) => listener())
 
+// 다른 탭에서 로그인·로그아웃해 세션이 바뀌면 이 탭의 메모리 캐시도 비우고 구독자에게 알린다
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === SESSION_KEY || e.key === null) {
+      window.dispatchEvent(new Event(SESSION_CLEARED_EVENT))
+      notify()
+    }
+  })
+}
+
 function subscribe(listener: () => void) {
   listeners.add(listener)
-  // 다른 탭에서 로그인·로그아웃해도 반영
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === SESSION_KEY || e.key === null) listener()
-  }
-  window.addEventListener('storage', onStorage)
   return () => {
     listeners.delete(listener)
-    window.removeEventListener('storage', onStorage)
   }
 }
 

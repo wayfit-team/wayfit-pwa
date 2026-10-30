@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { auth } from '../lib/auth'
+import { auth, useIsSignedIn } from '../lib/auth'
 import { kakaoRedirectUri } from '../lib/kakao'
 import { api } from './client'
 import type { Coupon, StoreUpdate } from './types'
@@ -38,11 +38,13 @@ export function useSignOut() {
 // ── 운전자 ──
 
 export function useCoupons() {
-  return useQuery({ queryKey: queryKeys.coupons, queryFn: api.myCoupons, enabled: auth.isSignedIn() })
+  const signedIn = useIsSignedIn()
+  return useQuery({ queryKey: queryKeys.coupons, queryFn: api.myCoupons, enabled: signedIn })
 }
 
 export function useDevices() {
-  return useQuery({ queryKey: queryKeys.devices, queryFn: api.myDevices, enabled: auth.isSignedIn() })
+  const signedIn = useIsSignedIn()
+  return useQuery({ queryKey: queryKeys.devices, queryFn: api.myDevices, enabled: signedIn })
 }
 
 export function useClaimPairing() {
@@ -84,7 +86,8 @@ export function useRedeem(couponId: string) {
 // ── 사장님 ──
 
 export function useOwnerStores() {
-  return useQuery({ queryKey: queryKeys.ownerStores, queryFn: api.ownerStores, enabled: auth.isSignedIn() })
+  const signedIn = useIsSignedIn()
+  return useQuery({ queryKey: queryKeys.ownerStores, queryFn: api.ownerStores, enabled: signedIn })
 }
 
 export function useUpdateStore(storeId: string) {
@@ -96,9 +99,10 @@ export function useUpdateStore(storeId: string) {
 }
 
 export function useStoreStats(storeId: string | undefined, days: 7 | 30) {
+  const signedIn = useIsSignedIn()
   return useQuery({
     queryKey: queryKeys.stats(storeId ?? '', days),
     queryFn: () => api.storeStats(storeId!, days),
-    enabled: storeId !== undefined,
+    enabled: signedIn && storeId !== undefined,
   })
 }

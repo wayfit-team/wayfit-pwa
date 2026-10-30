@@ -35,6 +35,14 @@ describe('카카오 로그인 (백엔드 /v1/auth/kakao)', () => {
     expect(auth.isSignedIn()).toBe(false)
   })
 
+  it('이전 토큰으로 나간 요청이 늦게 401 로 돌아와도 그 사이에 바뀐 새 토큰은 지우지 않는다', async () => {
+    auth.setToken('wfs_old')
+    const staleRequest = api.myCoupons()
+    auth.setToken('wfs_new')
+    await expectApiError(staleRequest, 401, 'UNAUTHORIZED')
+    expect(auth.token()).toBe('wfs_new')
+  })
+
   it('세션이 지워지면 영속 쿼리 캐시도 지운다 (공용 폰)', async () => {
     localStorage.setItem('wf.queryCache', '{"coupons":[]}')
     auth.setToken('wfs_x')

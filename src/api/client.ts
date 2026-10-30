@@ -28,8 +28,8 @@ async function request<T>(method: string, path: string, who: Who, body?: unknown
     throw new OfflineError()
   }
 
-  // 세션이 만료·폐기됐으면 토큰과 캐시를 지워 로그인 화면으로 돌아가게 한다
-  if (res.status === 401 && token) auth.clear()
+  // 세션이 만료·폐기됐으면(그 요청의 토큰이 아직 현재 토큰일 때만) 토큰과 캐시를 지워 로그인 화면으로 돌아가게 한다
+  if (res.status === 401 && token && auth.token() === token) auth.clear()
 
   if (res.status === 204) return undefined as T
   const json: unknown = await res.json().catch(() => null)

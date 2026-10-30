@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { auth } from '../lib/auth'
 import { DEMO, db } from '../mocks/db'
@@ -28,6 +28,10 @@ describe('차량 QR 로 연결 (Spec REQ-P1, P2)', () => {
     expect(router.state.location.pathname).toBe('/coupons')
     expect(auth.token()).toMatch(/^wfs_/)
     expect(await screen.findByText('아메리카노 1잔 무료')).toBeInTheDocument()
+
+    // 뒤로 가기를 눌러도 /pair?code= 가 방문 기록에 남아 재연결을 시도하지 않는다
+    await act(() => router.navigate(-1))
+    expect(router.state.location.pathname).toBe('/coupons')
   })
 
   it('로그인된 상태로 QR 링크에 들어오면 바로 연결한다', async () => {
@@ -67,6 +71,21 @@ describe('쿠폰함 (Spec REQ-P3, P9)', () => {
     expect(auth.isSignedIn()).toBe(false)
   })
 
+  it('다른 탭에서 로그아웃하거나 세션이 바뀌면(storage 이벤트) 이 탭의 쿼리 캐시도 비운다', async () => {
+    await signInAsDriver()
+    const { client } = renderRoute('/coupons')
+    expect(await screen.findByText('아메리카노 1잔 무료')).toBeInTheDocument()
+    expect(client.getQueryData(['coupons'])).toBeDefined()
+
+    act(() => {
+      localStorage.removeItem('wf.session')
+      window.dispatchEvent(new StorageEvent('storage', { key: 'wf.session', oldValue: 'wfs_1', newValue: null }))
+    })
+
+    expect(await screen.findByText('카카오로 로그인하고 쿠폰함을 열어요')).toBeInTheDocument()
+    expect(client.getQueryData(['coupons'])).toBeUndefined()
+  })
+
   it('로그인했지만 연결된 차가 없으면 연결 안내를 보여준다', async () => {
     db.devices = []
     await signIn()
@@ -93,6 +112,15 @@ describe('쿠폰함 (Spec REQ-P3, P9)', () => {
 })
 
 describe('계산대에서 사용 처리 (Spec REQ-P4, P5)', () => {
+  it('로그아웃 상태로 쿠폰 상세를 열면 로그인 안내를 보여주고, 로그인하면 그 쿠폰을 바로 보여준다', async () => {
+    const { user, router } = renderRoute('/coupons/c-coffee')
+    expect(screen.getByText('카카오로 로그인하고 쿠폰을 확인해요')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '카카오 로그인' }))
+    expect(await screen.findByText('303 184')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/coupons/c-coffee')
+  })
+
   it('직원이 PIN 을 틀리면 남은 횟수, 맞으면 사용 완료 화면', async () => {
     await signInAsDriver()
     const { user } = renderRoute('/coupons/c-coffee')

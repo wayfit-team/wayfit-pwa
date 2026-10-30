@@ -61,6 +61,7 @@ export const handlers = [
     if (code === DEMO.expiredCode) return fail(410, 'PAIRING_CODE_EXPIRED', '만료된 코드')
     if (db.usedCodes.has(code)) return fail(409, 'PAIRING_CODE_USED', '이미 사용된 코드')
     if (code === DEMO.unknownCode) return fail(404, 'PAIRING_CODE_NOT_FOUND', '없는 코드')
+    db.usedCodes.add(code)
     const device = db.devices[0]
     return HttpResponse.json({ kakaoUserId: 'mock-kakao-user', deviceId: device?.id ?? 'car-1', linkedAt: new Date().toISOString() })
   }),
