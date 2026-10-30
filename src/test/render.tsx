@@ -2,8 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router'
+import { onTestFinished } from 'vitest'
 import { api } from '../api/client'
-import { auth } from '../lib/auth'
+import { auth, clearQueriesOnSessionCleared } from '../lib/auth'
 import { kakaoRedirectUri } from '../lib/kakao'
 import { DEMO } from '../mocks/db'
 import { routes } from '../router'
@@ -13,6 +14,8 @@ export function renderRoute(path: string) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
   })
+  // main.tsx 와 같이 세션이 지워지면 쿼리 캐시를 비운다
+  onTestFinished(clearQueriesOnSessionCleared(client))
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   const user = userEvent.setup()
   render(

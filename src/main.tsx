@@ -5,7 +5,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { ApiError } from './api/errors'
-import { QUERY_CACHE_KEY, SESSION_CLEARED_EVENT } from './lib/auth'
+import { QUERY_CACHE_KEY, clearQueriesOnSessionCleared } from './lib/auth'
 import { useMock } from './lib/env'
 import './index.css'
 import { createRouter } from './router'
@@ -27,7 +27,7 @@ const queryClient = new QueryClient({
 const persister = createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY })
 
 // 세션 만료(401)·로그아웃 시 메모리 캐시도 비운다
-window.addEventListener(SESSION_CLEARED_EVENT, () => queryClient.clear())
+clearQueriesOnSessionCleared(queryClient)
 
 async function bootstrap() {
   // 목 모드에서는 MSW 서비스 워커와 PWA 서비스 워커가 같은 범위를 두고 충돌하므로 PWA 등록을 건너뛴다.

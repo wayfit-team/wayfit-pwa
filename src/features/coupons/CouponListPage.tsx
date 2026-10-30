@@ -2,7 +2,7 @@ import { CarFront, Settings, Ticket as TicketIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
 import { useCoupons, useDevices } from '../../api/queries'
-import { auth } from '../../lib/auth'
+import { useIsSignedIn } from '../../lib/auth'
 import { groupCoupons, type CouponTab } from '../../lib/coupon'
 import { OfflineBanner } from '../../ui/OfflineBanner'
 import { EmptyState, Page, Skeleton } from '../../ui/Surfaces'
@@ -22,6 +22,7 @@ export function CouponListPage() {
   const [tab, setTab] = useState<CouponTab>('active')
   const coupons = useCoupons()
   const devices = useDevices()
+  const signedIn = useIsSignedIn()
 
   const settingsLink = (
     <Link to="/settings" aria-label="설정" className="rounded-btn p-2 text-ink-2 hover:bg-sunken">
@@ -30,7 +31,7 @@ export function CouponListPage() {
   )
 
   // 로그인 전 — 쿠폰은 카카오 계정에 연결된 차에서 모아 보여준다 (EDGE-P1: 다시 로그인하면 그대로 보임)
-  if (!auth.isSignedIn()) {
+  if (!signedIn) {
     return (
       <Page>
         <EmptyState

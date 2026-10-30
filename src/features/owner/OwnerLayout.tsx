@@ -1,14 +1,15 @@
 import { LayoutDashboard, LogOut, Store } from 'lucide-react'
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router'
 import { useSignOut } from '../../api/queries'
-import { auth } from '../../lib/auth'
+import { useIsSignedIn } from '../../lib/auth'
 import { Logo } from '../../ui/Surfaces'
 
 /** 사장님 웹 공통 틀. 로그인 안 했으면 로그인으로 (Spec REQ-P10, EDGE-P8) */
 export function OwnerLayout() {
   const navigate = useNavigate()
   const signOut = useSignOut()
-  if (!auth.isSignedIn()) return <Navigate to="/owner/login" replace />
+  const signedIn = useIsSignedIn()
+  if (!signedIn) return <Navigate to="/owner/login" replace />
 
   const logout = () => void signOut().then(() => navigate('/owner/login', { replace: true }))
 

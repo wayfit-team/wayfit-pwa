@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { errorMessage } from '../../api/errors'
 import { useDevices, useSignOut, useUnlinkDevice } from '../../api/queries'
 import type { LinkedDevice } from '../../api/types'
-import { auth } from '../../lib/auth'
+import { useIsSignedIn } from '../../lib/auth'
 import { formatDateTime } from '../../lib/coupon'
 import { Button } from '../../ui/Button'
 import { Sheet } from '../../ui/Dialog'
@@ -15,6 +15,7 @@ import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 export function SettingsPage() {
   const navigate = useNavigate()
   const devices = useDevices()
+  const signedIn = useIsSignedIn()
   const unlink = useUnlinkDevice()
   const signOut = useSignOut()
   const [target, setTarget] = useState<LinkedDevice | null>(null)
@@ -30,7 +31,7 @@ export function SettingsPage() {
       <h1 className="mb-1 text-2xl font-extrabold">연결된 차</h1>
       <p className="mb-4 text-ink-2">쿠폰은 연결된 차에 쌓이고, 이 폰에서 보여줄 수 있어요</p>
 
-      {!auth.isSignedIn() ? (
+      {!signedIn ? (
         <EmptyState
           icon={<CarFront size={32} />}
           title="로그인하면 연결된 차를 볼 수 있어요"
@@ -65,7 +66,7 @@ export function SettingsPage() {
         </ul>
       )}
 
-      {auth.isSignedIn() && (
+      {signedIn && (
         <>
           <Button variant="secondary" block icon={<Plus size={18} />} className="mt-4" onClick={() => navigate('/pair')}>
             다른 차 연결

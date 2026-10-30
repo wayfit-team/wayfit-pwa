@@ -60,6 +60,13 @@ describe('쿠폰함 (Spec REQ-P3, P9)', () => {
     expect(screen.getByRole('button', { name: '카카오 로그인' })).toBeInTheDocument()
   })
 
+  it('서버에서 세션이 폐기됐으면(401) 로그인 안내로 돌아간다', async () => {
+    auth.setToken('wfs_revoked')
+    renderRoute('/coupons')
+    expect(await screen.findByText('카카오로 로그인하고 쿠폰함을 열어요')).toBeInTheDocument()
+    expect(auth.isSignedIn()).toBe(false)
+  })
+
   it('로그인했지만 연결된 차가 없으면 연결 안내를 보여준다', async () => {
     db.devices = []
     await signIn()

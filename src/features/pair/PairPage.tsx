@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../../api/errors'
 import { useClaimPairing } from '../../api/queries'
-import { auth } from '../../lib/auth'
+import { useIsSignedIn } from '../../lib/auth'
 import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 import { Button } from '../../ui/Button'
 import { Card, Page } from '../../ui/Surfaces'
@@ -18,7 +18,7 @@ export function PairPage() {
   const claim = useClaimPairing()
   const [code, setCode] = useState('')
   const autoTried = useRef(false)
-  const signedIn = auth.isSignedIn()
+  const signedIn = useIsSignedIn()
 
   const submit = (value: string) =>
     claim.mutate(value, { onSuccess: () => navigate('/coupons', { replace: true, state: { justPaired: true } }) })

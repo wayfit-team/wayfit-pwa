@@ -11,6 +11,13 @@ describe('사장님 로그인 (Spec REQ-P10)', () => {
     expect(router.state.location.pathname).toBe('/owner/login')
   })
 
+  it('서버에서 세션이 폐기됐으면(401) 로그인 화면으로 보낸다', async () => {
+    auth.setToken('wfs_revoked')
+    const { router } = renderRoute('/owner')
+    expect(await screen.findByRole('heading', { name: '웨이핏 사장님' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/owner/login')
+  })
+
   it('카카오 로그인하면 대시보드로', async () => {
     const { user, router } = renderRoute('/owner/login')
     await user.click(screen.getByRole('button', { name: '카카오 로그인' }))

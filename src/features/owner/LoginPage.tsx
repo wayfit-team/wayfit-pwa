@@ -1,11 +1,12 @@
 import { Navigate } from 'react-router'
-import { auth } from '../../lib/auth'
+import { useIsSignedIn } from '../../lib/auth'
 import { Card, Logo } from '../../ui/Surfaces'
 import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 
 /** 사장님도 운전자와 같은 카카오 로그인. 매장은 서버에서 카카오 회원번호로 연결된다 */
 export function LoginPage() {
-  if (auth.isSignedIn()) return <Navigate to="/owner" replace />
+  const signedIn = useIsSignedIn()
+  if (signedIn) return <Navigate to="/owner" replace />
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4">
