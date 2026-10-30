@@ -79,7 +79,7 @@ export function PairPage() {
               autoComplete="one-time-code"
               maxLength={8}
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 7))}
               placeholder="12345678"
               className="h-16 rounded-btn border border-line bg-sunken text-center font-mono text-3xl tracking-[0.3em] outline-none focus:border-brand focus:ring-2 focus:ring-brand"
             />
