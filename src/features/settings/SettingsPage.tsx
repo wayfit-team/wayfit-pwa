@@ -1,20 +1,22 @@
-import { ArrowLeft, CarFront, Link2Off, Plus } from 'lucide-react'
+import { ArrowLeft, CarFront, Link2Off, LogOut, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { errorMessage } from '../../api/errors'
-import { useDevices, useUnlinkDevice } from '../../api/queries'
+import { useDevices, useSignOut, useUnlinkDevice } from '../../api/queries'
 import type { LinkedDevice } from '../../api/types'
 import { auth } from '../../lib/auth'
 import { formatDateTime } from '../../lib/coupon'
 import { Button } from '../../ui/Button'
 import { Sheet } from '../../ui/Dialog'
 import { Card, EmptyState, Page, Skeleton } from '../../ui/Surfaces'
+import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 
 /** 연결된 차 목록·연결 해제 (Spec REQ-P8) */
 export function SettingsPage() {
   const navigate = useNavigate()
   const devices = useDevices()
   const unlink = useUnlinkDevice()
+  const signOut = useSignOut()
   const [target, setTarget] = useState<LinkedDevice | null>(null)
 
   const back = (
@@ -28,7 +30,17 @@ export function SettingsPage() {
       <h1 className="mb-1 text-2xl font-extrabold">연결된 차</h1>
       <p className="mb-4 text-ink-2">쿠폰은 연결된 차에 쌓이고, 이 폰에서 보여줄 수 있어요</p>
 
-      {auth.userToken() === null || (devices.data && devices.data.length === 0) ? (
+      {!auth.isSignedIn() ? (
+        <EmptyState
+          icon={<CarFront size={32} />}
+          title="로그인하면 연결된 차를 볼 수 있어요"
+          action={
+            <div className="w-full max-w-xs">
+              <KakaoLoginButton returnTo="/settings" />
+            </div>
+          }
+        />
+      ) : devices.data && devices.data.length === 0 ? (
         <EmptyState icon={<CarFront size={32} />} title="연결된 차가 없어요" />
       ) : devices.isPending ? (
         <Skeleton className="h-24" />
@@ -53,9 +65,22 @@ export function SettingsPage() {
         </ul>
       )}
 
-      <Button variant="secondary" block icon={<Plus size={18} />} className="mt-4" onClick={() => navigate('/pair')}>
-        다른 차 연결
-      </Button>
+      {auth.isSignedIn() && (
+        <>
+          <Button variant="secondary" block icon={<Plus size={18} />} className="mt-4" onClick={() => navigate('/pair')}>
+            다른 차 연결
+          </Button>
+          <Button
+            variant="ghost"
+            block
+            icon={<LogOut size={18} />}
+            className="mt-2"
+            onClick={() => void signOut().then(() => navigate('/coupons', { replace: true }))}
+          >
+            로그아웃
+          </Button>
+        </>
+      )}
 
       <Sheet open={target !== null} onClose={() => setTarget(null)} label="연결 해제">
         <h2 className="text-xl font-extrabold">{target?.label} 연결을 해제할까요?</h2>

@@ -1,0 +1,9 @@
+# Cloudflare Pages 응답 헤더 (프로덕션 배포에만 적용, 개발 서버·목 모드에는 영향 없음)
+# 세션 토큰을 localStorage 에 두므로 XSS 로 토큰이 새지 않도록 스크립트 출처를 이 사이트로 제한한다.
+# connect-src 는 VITE_API_BASE 가 가리키는 백엔드 주소와 맞춰야 한다.
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self' https://wayfit-backend.dannyldj.workers.dev; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

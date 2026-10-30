@@ -25,15 +25,16 @@ const MESSAGES: Record<string, string> = {
   PAIRING_CODE_EXPIRED: '연결 코드가 만료됐어요. 차 화면에서 새 코드를 받아주세요',
   PAIRING_CODE_USED: '이미 사용된 연결 코드예요. 차 화면에서 새 코드를 받아주세요',
   PAIRING_CODE_NOT_FOUND: '맞는 연결 코드가 없어요. 차 화면의 8자리 코드를 다시 확인해 주세요',
+  PAIRING_CLAIM_LOCKED: '연결 코드를 여러 번 틀렸어요. 잠시 후 다시 시도해 주세요',
   NOT_FOUND: '찾을 수 없어요',
-  UNAUTHORIZED: '다시 연결이 필요해요',
+  UNAUTHORIZED: '다시 로그인해 주세요',
+  KAKAO_AUTH_FAILED: '카카오 로그인에 실패했어요. 다시 시도해 주세요',
   PIN_INVALID: 'PIN이 맞지 않아요',
   PIN_LOCKED: '잠시 후 다시 시도해 주세요',
   COUPON_ALREADY_REDEEMED: '이미 사용된 쿠폰이에요',
   COUPON_EXPIRED: '사용 기간이 지난 쿠폰이에요',
   STORE_INACTIVE: '지금은 쿠폰을 받지 않는 매장이에요',
   VALIDATION_FAILED: '입력한 내용을 다시 확인해 주세요',
-  LOGIN_FAILED: '이메일 또는 비밀번호가 맞지 않아요',
 }
 
 export function errorMessage(error: unknown): string {

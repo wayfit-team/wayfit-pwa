@@ -1,12 +1,13 @@
 import { CarFront, Settings, Ticket as TicketIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
-import { useCoupons } from '../../api/queries'
+import { useCoupons, useDevices } from '../../api/queries'
 import { auth } from '../../lib/auth'
 import { groupCoupons, type CouponTab } from '../../lib/coupon'
 import { OfflineBanner } from '../../ui/OfflineBanner'
 import { EmptyState, Page, Skeleton } from '../../ui/Surfaces'
 import { Ticket } from '../../ui/Ticket'
+import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 import { InstallPrompt } from '../install/InstallPrompt'
 
 const TABS: { key: CouponTab; label: string; empty: string }[] = [
@@ -20,6 +21,7 @@ export function CouponListPage() {
   const justPaired = (location.state as { justPaired?: boolean } | null)?.justPaired === true
   const [tab, setTab] = useState<CouponTab>('active')
   const coupons = useCoupons()
+  const devices = useDevices()
 
   const settingsLink = (
     <Link to="/settings" aria-label="설정" className="rounded-btn p-2 text-ink-2 hover:bg-sunken">
@@ -27,8 +29,26 @@ export function CouponListPage() {
     </Link>
   )
 
-  // 연결된 차가 없음 (Spec REQ-P9, EDGE-P1)
-  if (auth.userToken() === null) {
+  // 로그인 전 — 쿠폰은 카카오 계정에 연결된 차에서 모아 보여준다 (EDGE-P1: 다시 로그인하면 그대로 보임)
+  if (!auth.isSignedIn()) {
+    return (
+      <Page>
+        <EmptyState
+          icon={<TicketIcon size={32} />}
+          title="카카오로 로그인하고 쿠폰함을 열어요"
+          body="가는 길에 받은 쿠폰을 매장에서 바로 쓸 수 있어요"
+          action={
+            <div className="w-full max-w-xs">
+              <KakaoLoginButton returnTo="/coupons" />
+            </div>
+          }
+        />
+      </Page>
+    )
+  }
+
+  // 연결된 차가 없음 (Spec REQ-P9)
+  if (devices.data && devices.data.length === 0) {
     return (
       <Page right={settingsLink}>
         <EmptyState

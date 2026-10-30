@@ -15,14 +15,13 @@ function bearer(request: Request): string | null {
   return request.headers.get('Authorization')?.replace(/^Bearer\s+/, '') ?? null
 }
 
+/** 카카오 로그인 세션. 목에는 계정이 하나라 운전자이자 매장 s1 의 사장님이다 */
 function isUser(request: Request) {
   const token = bearer(request)
-  return token !== null && db.userTokens.has(token)
+  return token !== null && db.sessions.has(token)
 }
 
-function isOwner(request: Request) {
-  return bearer(request) === db.ownerToken
-}
+const isOwner = isUser
 
 /**
  * crypto.randomUUID 는 보안 출처(https·localhost)에서만 있다.
@@ -36,18 +35,34 @@ function randomId(): string {
 const publicCoupon = ({ storeId: _storeId, ...coupon }: (typeof db.coupons)[number]) => coupon
 
 export const handlers = [
+  // ── 카카오 로그인 (백엔드 POST /v1/auth/kakao, /v1/auth/logout) ──
+  http.post(`${API}/auth/kakao`, async ({ request }) => {
+    await delay(300)
+    const { code, redirectUri } = (await request.json()) as { code?: string; redirectUri?: string }
+    if (!code || !redirectUri?.endsWith('/auth/kakao/callback')) return fail(400, 'VALIDATION_FAILED', '형식 오류')
+    if (code === DEMO.badKakaoCode) return fail(401, 'KAKAO_AUTH_FAILED', '카카오 거절', { kakaoErrorCode: 'KOE320' })
+    const sessionToken = `wfs_mock_${randomId()}`
+    db.sessions.add(sessionToken)
+    return HttpResponse.json({ sessionToken, expiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString() })
+  }),
+
+  http.post(`${API}/auth/logout`, ({ request }) => {
+    const token = bearer(request)
+    if (token) db.sessions.delete(token)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // ── 페어링 (Spec REQ-B15~B18) ──
   http.post(`${API}/pairing/claim`, async ({ request }) => {
     await delay(300)
+    if (!isUser(request)) return fail(401, 'UNAUTHORIZED', '로그인 필요')
     const { code } = (await request.json()) as { code?: string }
     if (!code || !/^\d{8}$/.test(code)) return fail(400, 'VALIDATION_FAILED', '8자리 숫자 코드')
     if (code === DEMO.expiredCode) return fail(410, 'PAIRING_CODE_EXPIRED', '만료된 코드')
     if (db.usedCodes.has(code)) return fail(409, 'PAIRING_CODE_USED', '이미 사용된 코드')
     if (code === DEMO.unknownCode) return fail(404, 'PAIRING_CODE_NOT_FOUND', '없는 코드')
-    // 같은 사용자가 다시 연결하면 기존 토큰 유지 (멱등)
-    const token = bearer(request) && isUser(request) ? bearer(request)! : `user-${randomId()}`
-    db.userTokens.add(token)
-    return HttpResponse.json({ userToken: token })
+    const device = db.devices[0]
+    return HttpResponse.json({ kakaoUserId: 'mock-kakao-user', deviceId: device?.id ?? 'car-1', linkedAt: new Date().toISOString() })
   }),
 
   http.get(`${API}/me/devices`, ({ request }) => {
@@ -108,15 +123,6 @@ export const handlers = [
   }),
 
   // ── 사장님 (REQ-B19~B21) ──
-  http.post(`${API}/owner/login`, async ({ request }) => {
-    await delay(300)
-    const { email, password } = (await request.json()) as { email?: string; password?: string }
-    if (email !== DEMO.ownerEmail || password !== DEMO.ownerPassword) {
-      return fail(401, 'LOGIN_FAILED', '로그인 실패')
-    }
-    return HttpResponse.json({ ownerToken: db.ownerToken })
-  }),
-
   http.get(`${API}/owner/stores`, ({ request }) => {
     if (!isOwner(request)) return fail(401, 'UNAUTHORIZED', '토큰 없음')
     return HttpResponse.json(db.stores)

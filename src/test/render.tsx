@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router'
 import { api } from '../api/client'
 import { auth } from '../lib/auth'
+import { kakaoRedirectUri } from '../lib/kakao'
 import { DEMO } from '../mocks/db'
 import { routes } from '../router'
 
@@ -22,13 +23,11 @@ export function renderRoute(path: string) {
   return { router, client, user }
 }
 
-/** 차와 연결된 운전자 상태로 만든다 */
-export async function signInAsDriver() {
-  const { userToken } = await api.claimPairing(DEMO.validCode)
-  auth.setUserToken(userToken)
+/** 카카오 로그인된 상태로 만든다. 목 계정은 차가 연결된 운전자이자 매장 s1 의 사장님 */
+export async function signIn() {
+  const { sessionToken } = await api.kakaoLogin(DEMO.kakaoCode, kakaoRedirectUri())
+  auth.setToken(sessionToken)
 }
 
-export async function signInAsOwner() {
-  const { ownerToken } = await api.ownerLogin(DEMO.ownerEmail, DEMO.ownerPassword)
-  auth.setOwnerToken(ownerToken)
-}
+export const signInAsDriver = signIn
+export const signInAsOwner = signIn

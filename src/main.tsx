@@ -5,6 +5,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider } from 'react-router'
 import { ApiError } from './api/errors'
+import { QUERY_CACHE_KEY, SESSION_CLEARED_EVENT } from './lib/auth'
+import { useMock } from './lib/env'
 import './index.css'
 import { createRouter } from './router'
 
@@ -22,12 +24,13 @@ const queryClient = new QueryClient({
   },
 })
 
-const persister = createSyncStoragePersister({ storage: window.localStorage, key: 'wf.queryCache' })
+const persister = createSyncStoragePersister({ storage: window.localStorage, key: QUERY_CACHE_KEY })
+
+// 세션 만료(401)·로그아웃 시 메모리 캐시도 비운다
+window.addEventListener(SESSION_CLEARED_EVENT, () => queryClient.clear())
 
 async function bootstrap() {
-  // 백엔드 연동 전: 개발 서버와 VITE_USE_MOCK=true 빌드(시연용)는 MSW 목 API 를 쓴다.
   // 목 모드에서는 MSW 서비스 워커와 PWA 서비스 워커가 같은 범위를 두고 충돌하므로 PWA 등록을 건너뛴다.
-  const useMock = import.meta.env.DEV || import.meta.env.VITE_USE_MOCK === 'true'
   if (useMock) {
     const { worker } = await import('./mocks/browser')
     await worker.start({ onUnhandledFrame: 'bypass', quiet: true })

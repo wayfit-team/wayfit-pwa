@@ -3,11 +3,13 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { errorMessage } from '../../api/errors'
 import { useClaimPairing } from '../../api/queries'
+import { auth } from '../../lib/auth'
+import { KakaoLoginButton } from '../auth/KakaoLoginButton'
 import { Button } from '../../ui/Button'
 import { Card, Page } from '../../ui/Surfaces'
 
 /**
- * 차 화면 QR → /pair?code=XXXXXXXX → 자동 연결 → 쿠폰함 (Spec REQ-P1)
+ * 차 화면 QR → /pair?code=XXXXXXXX → (카카오 로그인) → 자동 연결 → 쿠폰함 (Spec REQ-P1)
  * QR 없이 8자리 코드 직접 입력도 된다 (REQ-P2)
  */
 export function PairPage() {
@@ -16,20 +18,46 @@ export function PairPage() {
   const claim = useClaimPairing()
   const [code, setCode] = useState('')
   const autoTried = useRef(false)
+  const signedIn = auth.isSignedIn()
 
   const submit = (value: string) =>
     claim.mutate(value, { onSuccess: () => navigate('/coupons', { replace: true, state: { justPaired: true } }) })
 
-  // QR 로 들어오면 한 번만 자동 연결
+  // QR 로 들어오면 한 번만 자동 연결 (로그인 후)
   useEffect(() => {
     const fromQr = params.get('code')
-    if (fromQr && !autoTried.current) {
+    if (fromQr && signedIn && !autoTried.current) {
       autoTried.current = true
       setCode(fromQr)
       submit(fromQr)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params])
+  }, [params, signedIn])
+
+  // 쿠폰은 카카오 계정에 연결된 차에서 모아 보여주므로 먼저 로그인. 로그인하면 QR 코드 그대로 돌아온다
+  if (!signedIn) {
+    const fromQr = params.get('code')
+    const returnTo = fromQr && /^\d{8}$/.test(fromQr) ? `/pair?code=${fromQr}` : '/pair'
+    return (
+      <Page>
+        <div className="flex flex-1 flex-col justify-center gap-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex size-16 items-center justify-center rounded-card bg-brand-soft text-brand-strong">
+              <CarFront size={32} />
+            </div>
+            <h1 className="text-2xl font-extrabold">차와 연결하기</h1>
+            <p className="text-ink-2">
+              카카오로 로그인하면 이 차의 쿠폰이
+              <br />
+              내 쿠폰함에 모여요
+            </p>
+          </div>
+          <KakaoLoginButton returnTo={returnTo} label="카카오로 로그인하고 연결" />
+          <p className="text-center text-sm text-ink-3">앱 설치 없이 바로 쿠폰함이 열려요</p>
+        </div>
+      </Page>
+    )
+  }
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -88,7 +116,7 @@ export function PairPage() {
             </Button>
           </form>
         </Card>
-        <p className="text-center text-sm text-ink-3">앱 설치·회원가입 없이 바로 쿠폰함이 열려요</p>
+        <p className="text-center text-sm text-ink-3">앱 설치 없이 바로 쿠폰함이 열려요</p>
       </div>
     </Page>
   )

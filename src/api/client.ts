@@ -1,14 +1,22 @@
 import { auth } from '../lib/auth'
 import { ApiError, OfflineError, isApiErrorBody } from './errors'
-import type { Coupon, LinkedDevice, OwnerStore, StoreStats, StoreUpdate } from './types'
+import type {
+  ClaimPairingResponse,
+  Coupon,
+  LinkedDevice,
+  OwnerStore,
+  SessionResponse,
+  StoreStats,
+  StoreUpdate,
+} from './types'
 
 const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/v1'
 
-type Who = 'user' | 'owner' | 'none'
+type Who = 'session' | 'none'
 
 async function request<T>(method: string, path: string, who: Who, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  const token = who === 'user' ? auth.userToken() : who === 'owner' ? auth.ownerToken() : null
+  const token = who === 'session' ? auth.token() : null
   if (token) headers.Authorization = `Bearer ${token}`
 
   let res: Response
@@ -19,6 +27,9 @@ async function request<T>(method: string, path: string, who: Who, body?: unknown
   } catch {
     throw new OfflineError()
   }
+
+  // 세션이 만료·폐기됐으면 토큰과 캐시를 지워 로그인 화면으로 돌아가게 한다
+  if (res.status === 401 && token) auth.clear()
 
   if (res.status === 204) return undefined as T
   const json: unknown = await res.json().catch(() => null)
@@ -32,17 +43,20 @@ async function request<T>(method: string, path: string, who: Who, body?: unknown
 }
 
 export const api = {
+  // 카카오 로그인 (운전자·사장님 공통)
+  kakaoLogin: (code: string, redirectUri: string) =>
+    request<SessionResponse>('POST', '/auth/kakao', 'none', { code, redirectUri }),
+  logout: () => request<void>('POST', '/auth/logout', 'session'),
+
   // 운전자
-  claimPairing: (code: string) => request<{ userToken: string }>('POST', '/pairing/claim', 'user', { code }),
-  myDevices: () => request<LinkedDevice[]>('GET', '/me/devices', 'user'),
-  unlinkDevice: (id: string) => request<void>('DELETE', `/me/devices/${id}`, 'user'),
-  myCoupons: () => request<Coupon[]>('GET', '/me/coupons', 'user'),
-  redeem: (couponId: string, pin: string) => request<Coupon>('POST', `/coupons/${couponId}/redeem`, 'user', { pin }),
+  claimPairing: (code: string) => request<ClaimPairingResponse>('POST', '/pairing/claim', 'session', { code }),
+  myDevices: () => request<LinkedDevice[]>('GET', '/me/devices', 'session'),
+  unlinkDevice: (id: string) => request<void>('DELETE', `/me/devices/${id}`, 'session'),
+  myCoupons: () => request<Coupon[]>('GET', '/me/coupons', 'session'),
+  redeem: (couponId: string, pin: string) => request<Coupon>('POST', `/coupons/${couponId}/redeem`, 'session', { pin }),
 
   // 사장님
-  ownerLogin: (email: string, password: string) =>
-    request<{ ownerToken: string }>('POST', '/owner/login', 'none', { email, password }),
-  ownerStores: () => request<OwnerStore[]>('GET', '/owner/stores', 'owner'),
-  updateStore: (id: string, update: StoreUpdate) => request<OwnerStore>('PATCH', `/owner/stores/${id}`, 'owner', update),
-  storeStats: (id: string, days: 7 | 30) => request<StoreStats>('GET', `/owner/stores/${id}/stats?days=${days}`, 'owner'),
+  ownerStores: () => request<OwnerStore[]>('GET', '/owner/stores', 'session'),
+  updateStore: (id: string, update: StoreUpdate) => request<OwnerStore>('PATCH', `/owner/stores/${id}`, 'session', update),
+  storeStats: (id: string, days: 7 | 30) => request<StoreStats>('GET', `/owner/stores/${id}/stats?days=${days}`, 'session'),
 }

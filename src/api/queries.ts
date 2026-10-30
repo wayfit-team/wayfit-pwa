@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { auth } from '../lib/auth'
+import { kakaoRedirectUri } from '../lib/kakao'
 import { api } from './client'
 import type { Coupon, StoreUpdate } from './types'
 
@@ -10,22 +11,45 @@ export const queryKeys = {
   stats: (storeId: string, days: 7 | 30) => ['owner', 'stats', storeId, days] as const,
 }
 
+// ── 카카오 로그인 (운전자·사장님 공통) ──
+
+export function useKakaoLogin() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (code: string) => api.kakaoLogin(code, kakaoRedirectUri()),
+    onSuccess: ({ sessionToken }) => {
+      // 이전 사용자의 캐시가 섞이지 않도록 비우고 시작
+      client.clear()
+      auth.setToken(sessionToken)
+    },
+  })
+}
+
+/** 서버 세션을 폐기하고(실패해도) 이 폰의 토큰·캐시를 지운다 */
+export function useSignOut() {
+  const client = useQueryClient()
+  return async () => {
+    await api.logout().catch(() => undefined)
+    auth.clear()
+    client.clear()
+  }
+}
+
 // ── 운전자 ──
 
 export function useCoupons() {
-  return useQuery({ queryKey: queryKeys.coupons, queryFn: api.myCoupons, enabled: auth.userToken() !== null })
+  return useQuery({ queryKey: queryKeys.coupons, queryFn: api.myCoupons, enabled: auth.isSignedIn() })
 }
 
 export function useDevices() {
-  return useQuery({ queryKey: queryKeys.devices, queryFn: api.myDevices, enabled: auth.userToken() !== null })
+  return useQuery({ queryKey: queryKeys.devices, queryFn: api.myDevices, enabled: auth.isSignedIn() })
 }
 
 export function useClaimPairing() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: api.claimPairing,
-    onSuccess: ({ userToken }) => {
-      auth.setUserToken(userToken)
+    onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.coupons })
       void client.invalidateQueries({ queryKey: queryKeys.devices })
     },
@@ -59,15 +83,8 @@ export function useRedeem(couponId: string) {
 
 // ── 사장님 ──
 
-export function useOwnerLogin() {
-  return useMutation({
-    mutationFn: ({ email, password }: { email: string; password: string }) => api.ownerLogin(email, password),
-    onSuccess: ({ ownerToken }) => auth.setOwnerToken(ownerToken),
-  })
-}
-
 export function useOwnerStores() {
-  return useQuery({ queryKey: queryKeys.ownerStores, queryFn: api.ownerStores, enabled: auth.ownerToken() !== null })
+  return useQuery({ queryKey: queryKeys.ownerStores, queryFn: api.ownerStores, enabled: auth.isSignedIn() })
 }
 
 export function useUpdateStore(storeId: string) {

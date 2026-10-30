@@ -1,13 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import { auth } from '../lib/auth'
+import { kakaoRedirectUri } from '../lib/kakao'
 import { DEMO } from '../mocks/db'
+import { signIn } from '../test/render'
 import { api } from './client'
 import { ApiError, OfflineError, errorMessage } from './errors'
-
-async function signIn() {
-  const { userToken } = await api.claimPairing(DEMO.validCode)
-  auth.setUserToken(userToken)
-}
 
 async function expectApiError(promise: Promise<unknown>, status: number, code: string) {
   const error = await promise.then(
@@ -19,24 +16,59 @@ async function expectApiError(promise: Promise<unknown>, status: number, code: s
   return error as ApiError
 }
 
+describe('카카오 로그인 (백엔드 /v1/auth/kakao)', () => {
+  it('인가 코드를 넘기면 세션 토큰을 준다', async () => {
+    const { sessionToken } = await api.kakaoLogin(DEMO.kakaoCode, kakaoRedirectUri())
+    expect(sessionToken).toMatch(/^wfs_/)
+  })
+
+  it('카카오가 거절하면 다시 시도하라고 안내', async () => {
+    const e = await expectApiError(api.kakaoLogin(DEMO.badKakaoCode, kakaoRedirectUri()), 401, 'KAKAO_AUTH_FAILED')
+    expect(errorMessage(e)).toBe('카카오 로그인에 실패했어요. 다시 시도해 주세요')
+  })
+
+  it('로그아웃하면 세션이 폐기되고, 그 토큰으로 부르면 401 과 함께 이 폰의 세션도 지운다', async () => {
+    await signIn()
+    await api.logout()
+    expect(auth.isSignedIn()).toBe(true) // 로그아웃 API 자체는 토큰을 지우지 않는다 (useSignOut 이 지움)
+    await expectApiError(api.myCoupons(), 401, 'UNAUTHORIZED')
+    expect(auth.isSignedIn()).toBe(false)
+  })
+
+  it('세션이 지워지면 영속 쿼리 캐시도 지운다 (공용 폰)', async () => {
+    localStorage.setItem('wf.queryCache', '{"coupons":[]}')
+    auth.setToken('wfs_x')
+    auth.clear()
+    expect(localStorage.getItem('wf.queryCache')).toBeNull()
+    expect(auth.token()).toBeNull()
+  })
+})
+
 describe('페어링 (Spec REQ-B15, B16, EDGE-B5)', () => {
-  it('정상 코드면 사용자 토큰을 준다', async () => {
-    const { userToken } = await api.claimPairing(DEMO.validCode)
-    expect(userToken).toMatch(/^user-/)
+  it('로그인 없이 연결하면 401', async () => {
+    await expectApiError(api.claimPairing(DEMO.validCode), 401, 'UNAUTHORIZED')
+  })
+
+  it('정상 코드면 내 카카오 계정에 차가 연결된다', async () => {
+    await signIn()
+    const linked = await api.claimPairing(DEMO.validCode)
+    expect(linked.deviceId).toBe('car-1')
   })
 
   it('만료 410, 이미 사용 409 — 사용자에게는 새 코드를 받으라고 안내', async () => {
+    await signIn()
     const expired = await expectApiError(api.claimPairing(DEMO.expiredCode), 410, 'PAIRING_CODE_EXPIRED')
     expect(errorMessage(expired)).toContain('새 코드')
     await expectApiError(api.claimPairing(DEMO.usedCode), 409, 'PAIRING_CODE_USED')
   })
 
   it('차 화면에 뜬 아무 8자리 코드나 연결된다 (백엔드 연동 전 목)', async () => {
-    const { userToken } = await api.claimPairing('90261712')
-    expect(userToken).toMatch(/^user-/)
+    await signIn()
+    expect((await api.claimPairing('90261712')).deviceId).toBe('car-1')
   })
 
   it('없는 코드면 코드를 다시 확인하라고 안내', async () => {
+    await signIn()
     const e = await expectApiError(api.claimPairing(DEMO.unknownCode), 404, 'PAIRING_CODE_NOT_FOUND')
     expect(errorMessage(e)).toContain('8자리 코드를 다시 확인')
   })
@@ -84,24 +116,20 @@ it('네트워크가 끊기면 OfflineError (사용 처리는 온라인에서만,
 })
 
 describe('사장님 (Spec REQ-B19, B20)', () => {
-  it('틀린 비밀번호는 로그인 실패', async () => {
-    const e = await expectApiError(api.ownerLogin(DEMO.ownerEmail, 'nope'), 401, 'LOGIN_FAILED')
-    expect(errorMessage(e)).toBe('이메일 또는 비밀번호가 맞지 않아요')
+  it('로그인하지 않으면 매장을 볼 수 없다', async () => {
+    await expectApiError(api.ownerStores(), 401, 'UNAUTHORIZED')
   })
 
   it('혜택 문구는 40자를 넘을 수 없다', async () => {
-    const { ownerToken } = await api.ownerLogin(DEMO.ownerEmail, DEMO.ownerPassword)
-    auth.setOwnerToken(ownerToken)
+    await signIn()
     const e = await expectApiError(api.updateStore('s1', { benefitText: '가'.repeat(41) }), 400, 'VALIDATION_FAILED')
     expect(e.details.field).toBe('benefitText')
   })
 
   it('PIN 을 바꾸면 새 PIN 으로 쿠폰을 쓸 수 있다 (EDGE-B7)', async () => {
-    const { ownerToken } = await api.ownerLogin(DEMO.ownerEmail, DEMO.ownerPassword)
-    auth.setOwnerToken(ownerToken)
+    await signIn()
     await api.updateStore('s1', { pin: '9876' })
 
-    await signIn()
     await expectApiError(api.redeem('c-coffee', DEMO.storePin), 422, 'PIN_INVALID')
     expect((await api.redeem('c-coffee', '9876')).status).toBe('REDEEMED')
   })
