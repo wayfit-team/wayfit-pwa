@@ -1,0 +1,83 @@
+name: Deploy to Cloudflare Pages
+
+# master 푸시 시 프로덕션 배포, PR 시 프리뷰 배포를 수행한다.
+# 필요한 저장소 설정:
+#   Secrets:
+#     - CLOUDFLARE_API_TOKEN  : Cloudflare Pages:Edit 권한이 있는 API 토큰
+#     - CLOUDFLARE_ACCOUNT_ID : Cloudflare 계정 ID
+#   Variables (선택):
+#     - CLOUDFLARE_PROJECT_NAME : Cloudflare Pages 프로젝트 이름 (기본값: wayfit-pwa)
+#     - VITE_API_BASE           : 백엔드 API 주소 (예: https://api.wayfit.app/v1, 미지정 시 /v1)
+#     - VITE_USE_MOCK           : 시연용 목 API 활성화 여부 (true | false)
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      use_mock:
+        description: '데모 모드 빌드 (VITE_USE_MOCK=true)'
+        required: false
+        type: boolean
+        default: false
+      api_base:
+        description: '백엔드 API 주소 (비워두면 저장소 변수 VITE_API_BASE 사용)'
+        required: false
+        type: string
+        default: ''
+      branch:
+        description: 'Cloudflare Pages 배포 대상 브랜치 (비워두면 현재 브랜치)'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: deploy-pages-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        env:
+          VITE_API_BASE: ${{ inputs.api_base || vars.VITE_API_BASE }}
+          VITE_USE_MOCK: ${{ (github.event_name == 'workflow_dispatch' && inputs.use_mock && 'true') || vars.VITE_USE_MOCK }}
+        run: npm run build
+
+      - name: Publish to Cloudflare Pages
+        id: pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PROJECT_NAME || 'wayfit-pwa' }} --branch=${{ inputs.branch || github.head_ref || github.ref_name }}
