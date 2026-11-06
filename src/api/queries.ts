@@ -39,12 +39,22 @@ export function useSignOut() {
 
 export function useCoupons() {
   const signedIn = useIsSignedIn()
-  return useQuery({ queryKey: queryKeys.coupons, queryFn: api.myCoupons, enabled: signedIn })
+  return useQuery({
+    queryKey: queryKeys.coupons,
+    queryFn: api.myCoupons,
+    select: (data) => (Array.isArray(data) ? data : []),
+    enabled: signedIn,
+  })
 }
 
 export function useDevices() {
   const signedIn = useIsSignedIn()
-  return useQuery({ queryKey: queryKeys.devices, queryFn: api.myDevices, enabled: signedIn })
+  return useQuery({
+    queryKey: queryKeys.devices,
+    queryFn: api.myDevices,
+    select: (data) => (Array.isArray(data) ? data : []),
+    enabled: signedIn,
+  })
 }
 
 export function useClaimPairing() {
@@ -74,7 +84,9 @@ export function useRedeem(couponId: string) {
   return useMutation({
     mutationFn: (pin: string) => api.redeem(couponId, pin),
     onSuccess: (redeemed) => {
-      client.setQueryData<Coupon[]>(queryKeys.coupons, (list) => list?.map((c) => (c.id === redeemed.id ? redeemed : c)))
+      client.setQueryData<Coupon[]>(queryKeys.coupons, (list) =>
+        Array.isArray(list) ? list.map((c) => (c.id === redeemed.id ? redeemed : c)) : [redeemed],
+      )
     },
     onError: () => {
       // 이미 사용·만료 등 서버 상태가 바뀌었을 수 있다
@@ -87,7 +99,12 @@ export function useRedeem(couponId: string) {
 
 export function useOwnerStores() {
   const signedIn = useIsSignedIn()
-  return useQuery({ queryKey: queryKeys.ownerStores, queryFn: api.ownerStores, enabled: signedIn })
+  return useQuery({
+    queryKey: queryKeys.ownerStores,
+    queryFn: api.ownerStores,
+    select: (data) => (Array.isArray(data) ? data : []),
+    enabled: signedIn,
+  })
 }
 
 export function useUpdateStore(storeId: string) {

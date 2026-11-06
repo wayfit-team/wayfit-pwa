@@ -3,6 +3,7 @@ import { ApiError, OfflineError, isApiErrorBody } from './errors'
 import type {
   ClaimPairingResponse,
   Coupon,
+  DailyStat,
   LinkedDevice,
   OwnerStore,
   SessionResponse,
@@ -10,7 +11,43 @@ import type {
   StoreUpdate,
 } from './types'
 
-const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? '/v1'
+const BASE = ((import.meta.env.VITE_API_BASE as string | undefined)?.trim() || '/v1').replace(/\/+$/, '')
+
+/** 백엔드가 목록을 배열 그대로 주든 `{ coupons: [...] }` 처럼 감싸서 주든 배열로 꺼낸다 */
+function unwrapList<T>(data: unknown, key: string): T[] {
+  if (Array.isArray(data)) return data as T[]
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>
+    if (Array.isArray(record[key])) return record[key] as T[]
+    if (Array.isArray(record.items)) return record.items as T[]
+  }
+  return []
+}
+
+function unwrapItem<T>(data: unknown, key: string): T {
+  if (data && typeof data === 'object' && key in data) {
+    const inner = (data as Record<string, unknown>)[key]
+    if (inner && typeof inner === 'object') return inner as T
+  }
+  return data as T
+}
+
+function normalizeDevice(raw: LinkedDevice & { deviceId?: string }): LinkedDevice {
+  const id = raw.id ?? raw.deviceId ?? ''
+  return {
+    ...raw,
+    id,
+    label: raw.label || id || '내 차',
+  }
+}
+
+function normalizeCoupon(raw: Coupon & { benefitText?: string }): Coupon {
+  return {
+    ...raw,
+    benefit: raw.benefit ?? raw.benefitText ?? '',
+    redeemedAt: raw.redeemedAt ?? undefined,
+  }
+}
 
 type Who = 'session' | 'none'
 
@@ -50,13 +87,20 @@ export const api = {
 
   // 운전자
   claimPairing: (code: string) => request<ClaimPairingResponse>('POST', '/pairing/claim', 'session', { code }),
-  myDevices: () => request<LinkedDevice[]>('GET', '/me/devices', 'session'),
+  myDevices: async (): Promise<LinkedDevice[]> =>
+    unwrapList<LinkedDevice>(await request('GET', '/me/devices', 'session'), 'devices').map(normalizeDevice),
   unlinkDevice: (id: string) => request<void>('DELETE', `/me/devices/${id}`, 'session'),
-  myCoupons: () => request<Coupon[]>('GET', '/me/coupons', 'session'),
-  redeem: (couponId: string, pin: string) => request<Coupon>('POST', `/coupons/${couponId}/redeem`, 'session', { pin }),
+  myCoupons: async (): Promise<Coupon[]> =>
+    unwrapList<Coupon>(await request('GET', '/me/coupons', 'session'), 'coupons').map(normalizeCoupon),
+  redeem: async (couponId: string, pin: string): Promise<Coupon> =>
+    normalizeCoupon(unwrapItem<Coupon>(await request('POST', `/coupons/${couponId}/redeem`, 'session', { pin }), 'coupon')),
 
   // 사장님
-  ownerStores: () => request<OwnerStore[]>('GET', '/owner/stores', 'session'),
-  updateStore: (id: string, update: StoreUpdate) => request<OwnerStore>('PATCH', `/owner/stores/${id}`, 'session', update),
-  storeStats: (id: string, days: 7 | 30) => request<StoreStats>('GET', `/owner/stores/${id}/stats?days=${days}`, 'session'),
+  ownerStores: async (): Promise<OwnerStore[]> =>
+    unwrapList<OwnerStore>(await request('GET', '/owner/stores', 'session'), 'stores'),
+  updateStore: async (id: string, update: StoreUpdate): Promise<OwnerStore> =>
+    unwrapItem<OwnerStore>(await request('PATCH', `/owner/stores/${id}`, 'session', update), 'store'),
+  storeStats: async (id: string, days: 7 | 30): Promise<StoreStats> => ({
+    days: unwrapList<DailyStat>(await request('GET', `/owner/stores/${id}/stats?days=${days}`, 'session'), 'days'),
+  }),
 }

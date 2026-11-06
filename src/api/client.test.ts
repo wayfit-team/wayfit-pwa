@@ -1,7 +1,9 @@
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it, vi } from 'vitest'
 import { auth } from '../lib/auth'
 import { kakaoRedirectUri } from '../lib/kakao'
-import { DEMO } from '../mocks/db'
+import { DEMO, db } from '../mocks/db'
+import { server } from '../mocks/node'
 import { signIn } from '../test/render'
 import { api } from './client'
 import { ApiError, OfflineError, errorMessage } from './errors'
@@ -121,6 +123,28 @@ it('네트워크가 끊기면 OfflineError (사용 처리는 온라인에서만,
   expect(error).toBeInstanceOf(OfflineError)
   expect(errorMessage(error)).toBe('인터넷에 연결되어 있지 않아요')
   spy.mockRestore()
+})
+
+describe('응답 래핑 호환', () => {
+  it('백엔드가 목록을 { coupons }, { devices }, { stores } 객체로 감싸서 내려줘도 배열로 풀어서 반환한다', async () => {
+    await signIn()
+    server.use(
+      http.get('*/v1/me/coupons', () => HttpResponse.json({ coupons: db.coupons })),
+      http.get('*/v1/me/devices', () => HttpResponse.json({ devices: [{ deviceId: 'car-9', linkedAt: '2026-11-01T00:00:00Z' }] })),
+      http.get('*/v1/owner/stores', () => HttpResponse.json({ stores: db.stores })),
+    )
+
+    const coupons = await api.myCoupons()
+    expect(Array.isArray(coupons)).toBe(true)
+    expect(coupons).toHaveLength(db.coupons.length)
+
+    const devices = await api.myDevices()
+    expect(devices).toEqual([{ deviceId: 'car-9', id: 'car-9', label: 'car-9', linkedAt: '2026-11-01T00:00:00Z' }])
+
+    const stores = await api.ownerStores()
+    expect(Array.isArray(stores)).toBe(true)
+    expect(stores).toHaveLength(db.stores.length)
+  })
 })
 
 describe('사장님 (Spec REQ-B19, B20)', () => {

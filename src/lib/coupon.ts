@@ -10,6 +10,7 @@ export function effectiveStatus(coupon: Coupon, now: Date = new Date()): Coupon[
 
 export function groupCoupons(coupons: Coupon[], now: Date = new Date()): Record<CouponTab, Coupon[]> {
   const groups: Record<CouponTab, Coupon[]> = { active: [], used: [], expired: [] }
+  if (!Array.isArray(coupons)) return groups
   for (const c of coupons) {
     const status = effectiveStatus(c, now)
     groups[status === 'ISSUED' ? 'active' : status === 'REDEEMED' ? 'used' : 'expired'].push(c)

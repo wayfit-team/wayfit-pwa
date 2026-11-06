@@ -41,7 +41,7 @@ async function bootstrap() {
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: DAY }}>
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister, maxAge: DAY, buster: 'v2' }}>
         <RouterProvider router={createRouter()} />
       </PersistQueryClientProvider>
     </StrictMode>,
