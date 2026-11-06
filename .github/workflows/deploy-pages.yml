@@ -9,6 +9,7 @@ name: Deploy to Cloudflare Pages
 #     - CLOUDFLARE_PROJECT_NAME : Cloudflare Pages 프로젝트 이름 (기본값: wayfit-pwa)
 #     - VITE_API_BASE           : 백엔드 API 주소 (예: https://api.wayfit.app/v1, 미지정 시 /v1)
 #     - VITE_USE_MOCK           : 시연용 목 API 활성화 여부 (true | false)
+#     - VITE_KAKAO_REST_API_KEY : 카카오 앱 REST API 키 (공개값, 실제 API 모드의 카카오 로그인에 필수)
 
 on:
   push:
@@ -65,6 +66,7 @@ jobs:
         env:
           VITE_API_BASE: ${{ inputs.api_base || vars.VITE_API_BASE }}
           VITE_USE_MOCK: ${{ (github.event_name == 'workflow_dispatch' && inputs.use_mock && 'true') || vars.VITE_USE_MOCK }}
+          VITE_KAKAO_REST_API_KEY: ${{ vars.VITE_KAKAO_REST_API_KEY }}
         run: npm run build
 
       - name: Publish to Cloudflare Pages
