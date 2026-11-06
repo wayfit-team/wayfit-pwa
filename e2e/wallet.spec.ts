@@ -13,8 +13,9 @@ async function snap(page: Page, name: string) {
 test.describe('운전자 쿠폰 지갑 (폰)', () => {
   test.use({ viewport: PHONE, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
 
-  test('차 QR → 쿠폰함 → 계산대에서 PIN 사용 처리', async ({ page }) => {
+  test('차 QR → 카카오 로그인 → 쿠폰함 → 계산대에서 PIN 사용 처리', async ({ page }) => {
     await page.goto('/pair?code=12345678')
+    await page.getByRole('button', { name: '카카오로 로그인하고 연결' }).click()
     await expect(page.getByText('차와 연결됐어요. 쿠폰을 매장에서 보여주세요')).toBeVisible()
     await expect(page.getByText('아메리카노 1잔 무료')).toBeVisible()
     await snap(page, 'pwa-01-coupons')
@@ -40,6 +41,7 @@ test.describe('운전자 쿠폰 지갑 (폰)', () => {
 
   test('연결된 차 관리', async ({ page }) => {
     await page.goto('/pair?code=12345678')
+    await page.getByRole('button', { name: '카카오로 로그인하고 연결' }).click()
     await page.getByRole('link', { name: '설정' }).click()
     await expect(page.getByText('아이오닉 5 · Pleos')).toBeVisible()
     await snap(page, 'pwa-05-settings')
@@ -47,26 +49,35 @@ test.describe('운전자 쿠폰 지갑 (폰)', () => {
 
   test('만료된 QR 은 이유와 직접 입력을 보여준다', async ({ page }) => {
     await page.goto('/pair?code=00000000')
+    await page.getByRole('button', { name: '카카오로 로그인하고 연결' }).click()
     await expect(page.getByRole('alert')).toContainText('연결 코드가 만료됐어요')
     await snap(page, 'pwa-06-pair-expired')
   })
 
-  test('연결된 차가 없으면 안내', async ({ page }) => {
+  test('로그인 전에는 카카오 로그인 안내', async ({ page }) => {
     await page.goto('/coupons')
-    await expect(page.getByText('연결된 차가 없어요')).toBeVisible()
+    await expect(page.getByText('카카오로 로그인하고 쿠폰함을 열어요')).toBeVisible()
+  })
+
+  test('로그인 후 주소창에 인가 코드가 남지 않는다', async ({ page }) => {
+    await page.goto('/coupons')
+    await page.getByRole('button', { name: '카카오 로그인' }).click()
+    await expect(page.getByRole('heading', { name: '쿠폰함' })).toBeVisible()
+    expect(page.url()).not.toContain('code=')
+    // 뒤로 가도 인가 코드가 들어간 주소는 방문 기록에 없다
+    await page.goBack()
+    expect(page.url()).not.toContain('code=')
   })
 })
 
 test.describe('사장님 웹 (데스크톱)', () => {
   test.use({ viewport: DESKTOP })
 
-  test('로그인 → 대시보드 → 매장 정보 미리보기', async ({ page }) => {
+  test('카카오 로그인 → 대시보드 → 매장 정보 미리보기', async ({ page }) => {
     await page.goto('/owner')
     await expect(page).toHaveURL(/\/owner\/login$/)
-    await page.getByLabel('이메일').fill('owner@wayfit.app')
-    await page.getByLabel('비밀번호').fill('wayfit1234')
     await snap(page, 'pwa-07-owner-login')
-    await page.getByRole('button', { name: '로그인' }).click()
+    await page.getByRole('button', { name: '카카오 로그인' }).click()
 
     await expect(page.getByRole('heading', { name: '광교 모퉁이커피' })).toBeVisible()
     await expect(page.getByText('인증된 방문', { exact: true })).toBeVisible()

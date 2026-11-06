@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { auth } from '../../lib/auth'
-import { DEMO, db } from '../../mocks/db'
+import { db } from '../../mocks/db'
 import { renderRoute, signInAsOwner } from '../../test/render'
 
 describe('사장님 로그인 (Spec REQ-P10)', () => {
@@ -11,20 +11,31 @@ describe('사장님 로그인 (Spec REQ-P10)', () => {
     expect(router.state.location.pathname).toBe('/owner/login')
   })
 
-  it('틀리면 안내하고, 맞으면 대시보드로', async () => {
-    const { user, router } = renderRoute('/owner/login')
-    await user.type(screen.getByLabelText('이메일'), DEMO.ownerEmail)
-    await user.type(screen.getByLabelText('비밀번호'), 'wrong')
-    await user.click(screen.getByRole('button', { name: '로그인' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('이메일 또는 비밀번호가 맞지 않아요')
+  it('서버에서 세션이 폐기됐으면(401) 로그인 화면으로 보낸다', async () => {
+    auth.setToken('wfs_revoked')
+    const { router } = renderRoute('/owner')
+    expect(await screen.findByRole('heading', { name: '웨이핏 사장님' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/owner/login')
+  })
 
-    await user.clear(screen.getByLabelText('비밀번호'))
-    await user.type(screen.getByLabelText('비밀번호'), DEMO.ownerPassword)
-    await user.click(screen.getByRole('button', { name: '로그인' }))
+  it('카카오 로그인하면 대시보드로', async () => {
+    const { user, router } = renderRoute('/owner/login')
+    await user.click(screen.getByRole('button', { name: '카카오 로그인' }))
 
     expect(await screen.findByRole('heading', { name: '광교 모퉁이커피' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/owner')
-    expect(auth.ownerToken()).not.toBeNull()
+    expect(auth.token()).toMatch(/^wfs_/)
+  })
+
+  it('로그아웃하면 로그인 화면으로', async () => {
+    await signInAsOwner()
+    const { user, router } = renderRoute('/owner')
+    await screen.findByRole('heading', { name: '광교 모퉁이커피' })
+
+    await user.click(screen.getByRole('button', { name: '로그아웃' }))
+    expect(await screen.findByRole('heading', { name: '웨이핏 사장님' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/owner/login')
+    expect(auth.isSignedIn()).toBe(false)
   })
 })
 

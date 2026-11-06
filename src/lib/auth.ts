@@ -1,9 +1,14 @@
+import { useSyncExternalStore } from 'react'
+
 /**
- * 토큰 저장. API가 다른 도메인(Workers)이라 쿠키 대신 Bearer + localStorage.
- * 운전자 토큰을 잃어도 쿠폰은 차량 기기에 있으므로 다시 연결하면 그대로 보인다 (Spec EDGE-P1)
+ * 카카오 로그인 세션 토큰 저장. 운전자 쿠폰 지갑과 사장님 웹이 같은 카카오 로그인을 쓴다.
+ * API가 다른 사이트(Workers)라 쿠키 대신 Bearer + localStorage.
+ * 세션을 잃어도 쿠폰은 차량 기기에 있으므로 다시 로그인하면 그대로 보인다 (Spec EDGE-P1)
  */
-const USER_KEY = 'wf.userToken'
-const OWNER_KEY = 'wf.ownerToken'
+const SESSION_KEY = 'wf.session'
+export const QUERY_CACHE_KEY = 'wf.queryCache'
+/** 세션이 지워졌거나 다른 탭에서 바뀌었을 때 메모리의 쿼리 캐시도 비우도록 main.tsx 가 듣는다 */
+export const SESSION_CLEARED_EVENT = 'wf:session-cleared'
 
 function read(key: string): string | null {
   try {
@@ -22,9 +27,50 @@ function write(key: string, value: string | null) {
   }
 }
 
+const listeners = new Set<() => void>()
+const notify = () => listeners.forEach((listener) => listener())
+
+// 다른 탭에서 로그인·로그아웃해 세션이 바뀌면 이 탭의 메모리 캐시도 비우고 구독자에게 알린다
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e: StorageEvent) => {
+    if (e.key === SESSION_KEY || e.key === null) {
+      window.dispatchEvent(new Event(SESSION_CLEARED_EVENT))
+      notify()
+    }
+  })
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
 export const auth = {
-  userToken: () => read(USER_KEY),
-  setUserToken: (token: string | null) => write(USER_KEY, token),
-  ownerToken: () => read(OWNER_KEY),
-  setOwnerToken: (token: string | null) => write(OWNER_KEY, token),
+  token: () => read(SESSION_KEY),
+  isSignedIn: () => read(SESSION_KEY) !== null,
+  setToken: (token: string) => {
+    write(SESSION_KEY, token)
+    notify()
+  },
+  /** 로그아웃·세션 만료. 공용 폰에서 다음 사람에게 이전 사용자의 쿠폰이 보이지 않도록 캐시도 함께 지운다 */
+  clear: () => {
+    write(SESSION_KEY, null)
+    write(QUERY_CACHE_KEY, null)
+    window.dispatchEvent(new Event(SESSION_CLEARED_EVENT))
+    notify()
+  },
+}
+
+/** 로그인 상태. 401·로그아웃으로 세션이 지워지면 화면이 다시 그려진다 */
+export function useIsSignedIn(): boolean {
+  return useSyncExternalStore(subscribe, auth.isSignedIn, () => false)
+}
+
+/** 세션이 지워지면 메모리의 쿼리 캐시도 비운다. 앱 시작 시 한 번 연결하고, 해제 함수를 돌려준다 */
+export function clearQueriesOnSessionCleared(client: { clear: () => void }): () => void {
+  const onCleared = () => client.clear()
+  window.addEventListener(SESSION_CLEARED_EVENT, onCleared)
+  return () => window.removeEventListener(SESSION_CLEARED_EVENT, onCleared)
 }

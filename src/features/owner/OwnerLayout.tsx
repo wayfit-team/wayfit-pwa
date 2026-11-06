@@ -1,20 +1,17 @@
 import { LayoutDashboard, LogOut, Store } from 'lucide-react'
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { auth } from '../../lib/auth'
+import { useSignOut } from '../../api/queries'
+import { useIsSignedIn } from '../../lib/auth'
 import { Logo } from '../../ui/Surfaces'
 
 /** 사장님 웹 공통 틀. 로그인 안 했으면 로그인으로 (Spec REQ-P10, EDGE-P8) */
 export function OwnerLayout() {
   const navigate = useNavigate()
-  const client = useQueryClient()
-  if (auth.ownerToken() === null) return <Navigate to="/owner/login" replace />
+  const signOut = useSignOut()
+  const signedIn = useIsSignedIn()
+  if (!signedIn) return <Navigate to="/owner/login" replace />
 
-  const logout = () => {
-    auth.setOwnerToken(null)
-    client.removeQueries({ queryKey: ['owner'] })
-    navigate('/owner/login', { replace: true })
-  }
+  const logout = () => void signOut().then(() => navigate('/owner/login', { replace: true }))
 
   const tab = ({ isActive }: { isActive: boolean }) =>
     `inline-flex items-center gap-2 rounded-btn px-4 h-11 font-bold transition ${isActive ? 'bg-brand-soft text-brand-strong' : 'text-ink-2 hover:bg-sunken'}`

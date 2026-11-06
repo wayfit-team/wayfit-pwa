@@ -1,4 +1,5 @@
 import { Navigate, createBrowserRouter, type RouteObject } from 'react-router'
+import { KakaoCallbackPage } from './features/auth/KakaoCallbackPage'
 import { CouponDetailPage } from './features/coupons/CouponDetailPage'
 import { CouponListPage } from './features/coupons/CouponListPage'
 import { DashboardPage } from './features/owner/DashboardPage'
@@ -10,6 +11,8 @@ import { SettingsPage } from './features/settings/SettingsPage'
 
 export const routes: RouteObject[] = [
   { path: '/', element: <Navigate to="/coupons" replace /> },
+  // 카카오 로그인 콜백 (운전자·사장님 공통)
+  { path: '/auth/kakao/callback', element: <KakaoCallbackPage /> },
   // 운전자 쿠폰 지갑
   { path: '/pair', element: <PairPage /> },
   { path: '/coupons', element: <CouponListPage /> },

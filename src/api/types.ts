@@ -55,6 +55,17 @@ export interface StoreStats {
   days: DailyStat[]
 }
 
+export interface SessionResponse {
+  sessionToken: string
+  expiresAt: string
+}
+
+export interface ClaimPairingResponse {
+  kakaoUserId: string
+  deviceId: string
+  linkedAt: string
+}
+
 export interface ApiErrorBody {
   error: { code: string; message: string; details?: Record<string, unknown> }
 }

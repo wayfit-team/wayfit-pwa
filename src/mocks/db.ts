@@ -5,7 +5,7 @@ import type { Coupon, DailyStat, LinkedDevice, OwnerStore } from '../api/types'
  * - 연결 코드: 차 화면에 뜬 아무 8자리 코드나 연결된다 (백엔드가 없어 차와 코드를 맞출 수 없으므로)
  *   단, 오류 화면 시연용: 00000000 = 만료, 11111111 = 이미 사용, 99999999 = 없는 코드
  * - 매장 PIN 1234, 5회 틀리면 15분 잠금
- * - 사장님 owner@wayfit.app / wayfit1234
+ * - 카카오 로그인: 목 모드는 카카오로 나가지 않고 바로 로그인된다 (인가 코드 'bad-kakao-code' 면 실패). 이 계정이 매장 s1 의 사장님
  */
 export const DEMO = {
   validCode: '12345678',
@@ -13,8 +13,8 @@ export const DEMO = {
   usedCode: '11111111',
   unknownCode: '99999999',
   storePin: '1234',
-  ownerEmail: 'owner@wayfit.app',
-  ownerPassword: 'wayfit1234',
+  kakaoCode: 'mock-kakao-code',
+  badKakaoCode: 'bad-kakao-code',
 } as const
 
 const DAY = 86_400_000
@@ -25,12 +25,11 @@ interface PinState {
 }
 
 interface Db {
-  userTokens: Set<string>
+  sessions: Set<string>
   devices: LinkedDevice[]
   usedCodes: Set<string>
   coupons: (Coupon & { storeId: string })[]
   stores: OwnerStore[]
-  ownerToken: string
   pins: Map<string, PinState>
   storePin: string
 }
@@ -38,7 +37,7 @@ interface Db {
 function seed(now = Date.now()): Db {
   const iso = (offsetMs: number) => new Date(now + offsetMs).toISOString()
   return {
-    userTokens: new Set(),
+    sessions: new Set(),
     devices: [{ id: 'car-1', label: '아이오닉 5 · Pleos', linkedAt: iso(-2 * DAY) }],
     usedCodes: new Set([DEMO.usedCode]),
     coupons: [
@@ -70,7 +69,6 @@ function seed(now = Date.now()): Db {
         },
       },
     ],
-    ownerToken: 'owner-demo-token',
     pins: new Map(),
     storePin: DEMO.storePin,
   }
