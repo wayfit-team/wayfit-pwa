@@ -5,7 +5,8 @@ name: Deploy to Cloudflare Pages
 #   Secrets:
 #     - CLOUDFLARE_API_TOKEN  : Cloudflare Pages:Edit 권한이 있는 API 토큰
 #     - CLOUDFLARE_ACCOUNT_ID : Cloudflare 계정 ID
-#   Variables (선택):
+#   Variables — 환경(Environment)별로 넣는다. master/main 은 production, 그 외 브랜치·PR 은 preview
+#   (preview 는 실제 카카오 로그인이 안 되므로 VITE_USE_MOCK=true 권장):
 #     - CLOUDFLARE_PROJECT_NAME : Cloudflare Pages 프로젝트 이름 (기본값: wayfit-pwa)
 #     - VITE_API_BASE           : 백엔드 API 주소 (예: https://api.wayfit.app/v1, 미지정 시 /v1)
 #     - VITE_USE_MOCK           : 시연용 목 API 활성화 여부 (true | false)
@@ -35,6 +36,7 @@ concurrency:
 
 jobs:
   deploy:
+    environment: ${{ (github.event_name == 'pull_request' || (github.ref_name != 'master' && github.ref_name != 'main')) && 'preview' || 'production' }}
     name: Build & Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
