@@ -1,10 +1,10 @@
-import { MapPin, Save } from 'lucide-react'
+import { MapPin, Save, Store } from 'lucide-react'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { ApiError, errorMessage } from '../../api/errors'
 import { useOwnerStores, useUpdateStore } from '../../api/queries'
 import type { OwnerStore, StoreCategory, StoreUpdate, Weekday } from '../../api/types'
 import { Button } from '../../ui/Button'
-import { Card, Skeleton } from '../../ui/Surfaces'
+import { Card, EmptyState, Skeleton } from '../../ui/Surfaces'
 import { BenefitPreview } from './BenefitPreview'
 
 const BENEFIT_MAX = 40
@@ -27,7 +27,8 @@ const input =
 export function StorePage() {
   const stores = useOwnerStores()
   const store = stores.data?.[0]
-  if (stores.isPending || !store) return <Skeleton className="h-96" />
+  if (stores.isPending) return <Skeleton className="h-96" />
+  if (!store) return <EmptyState icon={<Store size={32} />} title="등록된 매장이 없어요" />
   return <StoreForm key={store.id} store={store} />
 }
 
@@ -44,6 +45,7 @@ function StoreForm({ store }: { store: OwnerStore }) {
 
   const fieldError = (field: string) =>
     update.error instanceof ApiError && update.error.details.field === field ? update.error.message : null
+  const pinError = fieldError('pin') ?? fieldError('pinCode')
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
@@ -174,7 +176,7 @@ function StoreForm({ store }: { store: OwnerStore }) {
         </Card>
 
         <Card className="flex flex-col gap-4">
-          <Field label="쿠폰 사용 PIN 변경 (숫자 4자리, 바꿀 때만)" htmlFor="pin" error={fieldError('pin')}>
+          <Field label="쿠폰 사용 PIN 변경 (숫자 4자리, 바꿀 때만)" htmlFor="pin" error={pinError}>
             <input
               id="pin"
               inputMode="numeric"
@@ -197,7 +199,7 @@ function StoreForm({ store }: { store: OwnerStore }) {
 
       <aside className="flex flex-col gap-4 md:sticky md:top-20 md:self-start">
         <BenefitPreview name={form.name} category={form.category} benefit={form.benefitText} />
-        {update.isError && !fieldError('benefitText') && !fieldError('pin') && (
+        {update.isError && !fieldError('benefitText') && !pinError && (
           <p role="alert" className="font-semibold text-rose">
             {errorMessage(update.error)}
           </p>

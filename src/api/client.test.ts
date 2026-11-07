@@ -162,7 +162,7 @@ describe('응답 래핑 호환', () => {
   })
 })
 
-describe('사장님 (Spec REQ-B19, B20)', () => {
+describe('사장님 (Spec REQ-B19, B20, B21)', () => {
   it('로그인하지 않으면 매장을 볼 수 없다', async () => {
     await expectApiError(api.ownerStores(), 401, 'UNAUTHORIZED')
   })
@@ -179,5 +179,40 @@ describe('사장님 (Spec REQ-B19, B20)', () => {
 
     await expectApiError(api.redeem('c-coffee', DEMO.storePin), 422, 'PIN_INVALID')
     expect((await api.redeem('c-coffee', '9876')).status).toBe('REDEEMED')
+  })
+
+  it('서버 StoreStatsResponse({ days: 7, daily: [{ visitsAccepted, visitsVerified, couponsRedeemed }] })를 DailyStat 배열로 정규화한다', async () => {
+    await signIn()
+    const stats = await api.storeStats('s1', 7)
+    expect(stats.days).toHaveLength(7)
+    expect(stats.days[0]).toEqual(
+      expect.objectContaining({
+        date: expect.any(String),
+        impressions: expect.any(Number),
+        accepts: expect.any(Number),
+        visits: expect.any(Number),
+        redemptions: expect.any(Number),
+      }),
+    )
+  })
+
+  it('시드 매장처럼 openHours 가 { all: { open, close } } 로 내려와도 mon~sun 요일별로 펼친다', async () => {
+    await signIn()
+    server.use(
+      http.get('*/v1/owner/stores', () =>
+        HttpResponse.json({
+          stores: [
+            {
+              ...db.stores[0],
+              openHours: { all: { open: '00:00', close: '23:59' } },
+            },
+          ],
+        }),
+      ),
+    )
+
+    const [store] = await api.ownerStores()
+    expect(store.openHours.mon).toEqual({ open: '00:00', close: '23:59' })
+    expect(store.openHours.sun).toEqual({ open: '00:00', close: '23:59' })
   })
 })

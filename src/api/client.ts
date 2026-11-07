@@ -5,13 +5,17 @@ import type {
   Coupon,
   DailyStat,
   LinkedDevice,
+  OpenHours,
   OwnerStore,
   SessionResponse,
   StoreStats,
   StoreUpdate,
+  Weekday,
 } from './types'
 
 const BASE = ((import.meta.env.VITE_API_BASE as string | undefined)?.trim() || '/v1').replace(/\/+$/, '')
+
+const WEEKDAYS: Weekday[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
 
 /** 백엔드가 목록을 배열 그대로 주든 `{ coupons: [...] }` 처럼 감싸서 주든 배열로 꺼낸다 */
 function unwrapList<T>(data: unknown, key: string): T[] {
@@ -19,6 +23,7 @@ function unwrapList<T>(data: unknown, key: string): T[] {
   if (data && typeof data === 'object') {
     const record = data as Record<string, unknown>
     if (Array.isArray(record[key])) return record[key] as T[]
+    if (Array.isArray(record.daily)) return record.daily as T[]
     if (Array.isArray(record.items)) return record.items as T[]
   }
   return []
@@ -64,6 +69,53 @@ function normalizeCoupon(raw: CouponDto): Coupon {
     storeName: storeNameSnapshot ?? storeName ?? '',
     benefit: benefitSnapshot ?? benefit ?? benefitText ?? '',
     redeemedAt: redeemedAt ?? undefined,
+  }
+}
+
+type RawOpenHoursMap = Partial<Record<Weekday | 'all', OpenHours | null>>
+
+/** 시드 데이터처럼 `{ all: { open, close } }` 축약 형태로 내려와도 요일별(`mon`~`sun`)로 펼친다 */
+function normalizeOpenHours(raw?: RawOpenHoursMap): Record<Weekday, OpenHours | null> {
+  const fallback = raw?.all ?? null
+  return Object.fromEntries(
+    WEEKDAYS.map((day) => {
+      const entry = raw?.[day] !== undefined ? raw[day] : fallback
+      return [day, entry ? { open: entry.open, close: entry.close } : null]
+    }),
+  ) as Record<Weekday, OpenHours | null>
+}
+
+function normalizeStore(raw: OwnerStore & { openHours?: RawOpenHoursMap }): OwnerStore {
+  return {
+    id: raw.id,
+    name: raw.name,
+    category: raw.category,
+    address: raw.address,
+    lat: raw.lat,
+    lng: raw.lng,
+    benefitText: raw.benefitText,
+    radiusM: raw.radiusM,
+    openHours: normalizeOpenHours(raw.openHours),
+    paused: Boolean(raw.paused),
+  }
+}
+
+/** 서버 DailyStatItem: visitsAccepted·visitsVerified·couponsRedeemed 로 내려온다 */
+type DailyStatDto = Partial<DailyStat> & {
+  date: string
+  impressions?: number
+  visitsAccepted?: number
+  visitsVerified?: number
+  couponsRedeemed?: number
+}
+
+function normalizeDailyStat(raw: DailyStatDto): DailyStat {
+  return {
+    date: raw.date,
+    impressions: raw.impressions ?? 0,
+    accepts: raw.accepts ?? raw.visitsAccepted ?? 0,
+    visits: raw.visits ?? raw.visitsVerified ?? 0,
+    redemptions: raw.redemptions ?? raw.couponsRedeemed ?? 0,
   }
 }
 
@@ -115,10 +167,12 @@ export const api = {
 
   // 사장님
   ownerStores: async (): Promise<OwnerStore[]> =>
-    unwrapList<OwnerStore>(await request('GET', '/owner/stores', 'session'), 'stores'),
+    unwrapList<OwnerStore>(await request('GET', '/owner/stores', 'session'), 'stores').map(normalizeStore),
   updateStore: async (id: string, update: StoreUpdate): Promise<OwnerStore> =>
-    unwrapItem<OwnerStore>(await request('PATCH', `/owner/stores/${id}`, 'session', update), 'store'),
+    normalizeStore(unwrapItem<OwnerStore>(await request('PATCH', `/owner/stores/${id}`, 'session', update), 'store')),
   storeStats: async (id: string, days: 7 | 30): Promise<StoreStats> => ({
-    days: unwrapList<DailyStat>(await request('GET', `/owner/stores/${id}/stats?days=${days}`, 'session'), 'days'),
+    days: unwrapList<DailyStatDto>(await request('GET', `/owner/stores/${id}/stats?days=${days}`, 'session'), 'daily').map(
+      normalizeDailyStat,
+    ),
   }),
 }

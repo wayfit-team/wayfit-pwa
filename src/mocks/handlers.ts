@@ -39,6 +39,31 @@ const publicCoupon = ({ storeName, benefit, ...coupon }: (typeof db.coupons)[num
   benefitSnapshot: benefit,
 })
 
+/** 실제 서버 StoreStatsResponse 와 같은 모양으로 내려준다 (days 는 조회 기간 숫자, 일자별 배열은 daily) */
+function publicStats(storeId: string, days: 7 | 30) {
+  const list = statsFor(days)
+  return {
+    storeId,
+    days,
+    totals: {
+      impressions: list.reduce((s, d) => s + d.impressions, 0),
+      visitsAccepted: list.reduce((s, d) => s + d.accepts, 0),
+      visitsVerified: list.reduce((s, d) => s + d.visits, 0),
+      couponsRedeemed: list.reduce((s, d) => s + d.redemptions, 0),
+      acceptRate: 0,
+      verifyRate: 0,
+      redeemRate: 0,
+    },
+    daily: list.map((d) => ({
+      date: d.date,
+      impressions: d.impressions,
+      visitsAccepted: d.accepts,
+      visitsVerified: d.visits,
+      couponsRedeemed: d.redemptions,
+    })),
+  }
+}
+
 export const handlers = [
   // ── 카카오 로그인 (백엔드 POST /v1/auth/kakao, /v1/auth/logout) ──
   http.post(`${API}/auth/kakao`, async ({ request }) => {
@@ -131,7 +156,7 @@ export const handlers = [
   // ── 사장님 (REQ-B19~B21) ──
   http.get(`${API}/owner/stores`, ({ request }) => {
     if (!isOwner(request)) return fail(401, 'UNAUTHORIZED', '토큰 없음')
-    return HttpResponse.json(db.stores)
+    return HttpResponse.json({ stores: db.stores })
   }),
 
   http.patch(`${API}/owner/stores/:id`, async ({ request, params }) => {
@@ -154,12 +179,12 @@ export const handlers = [
       db.storePin = pin
     }
     Object.assign(store, update)
-    return HttpResponse.json(store)
+    return HttpResponse.json({ store })
   }),
 
-  http.get(`${API}/owner/stores/:id/stats`, ({ request }) => {
+  http.get(`${API}/owner/stores/:id/stats`, ({ request, params }) => {
     if (!isOwner(request)) return fail(401, 'UNAUTHORIZED', '토큰 없음')
     const days = Number(new URL(request.url).searchParams.get('days') ?? 7)
-    return HttpResponse.json({ days: statsFor(days === 30 ? 30 : 7) })
+    return HttpResponse.json(publicStats(String(params.id), days === 30 ? 30 : 7))
   }),
 ]
