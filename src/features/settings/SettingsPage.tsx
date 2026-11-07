@@ -84,7 +84,7 @@ export function SettingsPage() {
       )}
 
       <Sheet open={target !== null} onClose={() => setTarget(null)} label="연결 해제">
-        <h2 className="text-xl font-extrabold">{target?.label} 연결을 해제할까요?</h2>
+        <h2 className="text-xl font-extrabold wrap-anywhere">{target?.label} 연결을 해제할까요?</h2>
         <p className="mt-2 text-ink-2">해제하면 이 차의 쿠폰이 이 폰에 보이지 않아요. 쿠폰은 차에 남아 있어요.</p>
         {unlink.isError && <p className="mt-3 font-semibold text-rose">{errorMessage(unlink.error)}</p>}
         <div className="mt-6 grid grid-cols-2 gap-3">
