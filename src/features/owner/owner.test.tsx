@@ -91,4 +91,12 @@ describe('매장 정보 (Spec REQ-P11, P12)', () => {
     expect(await screen.findByText('저장했어요. 다음 추천부터 반영돼요')).toBeInTheDocument()
     expect(db.storePin).toBe('4321')
   })
+
+  it('등록된 매장이 없으면 매장 정보 화면에서도 안내 문구를 보여준다', async () => {
+    db.stores = []
+    await signInAsOwner()
+    renderRoute('/owner/store')
+
+    expect(await screen.findByText('등록된 매장이 없어요')).toBeInTheDocument()
+  })
 })
