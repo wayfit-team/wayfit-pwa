@@ -160,7 +160,7 @@ describe('사장님 (Spec REQ-B19, B20)', () => {
 
   it('PIN 을 바꾸면 새 PIN 으로 쿠폰을 쓸 수 있다 (EDGE-B7)', async () => {
     await signIn()
-    await api.updateStore('s1', { pin: '9876' })
+    await api.updateStore('s1', { pinCode: '9876' })
 
     await expectApiError(api.redeem('c-coffee', DEMO.storePin), 422, 'PIN_INVALID')
     expect((await api.redeem('c-coffee', '9876')).status).toBe('REDEEMED')

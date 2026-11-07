@@ -80,4 +80,15 @@ describe('매장 정보 (Spec REQ-P11, P12)', () => {
     await user.type(pin, '12ab345')
     expect(pin).toHaveValue('1234')
   })
+
+  it('PIN 을 바꿔 저장하면 서버(pinCode)에 반영된다', async () => {
+    await signInAsOwner()
+    const { user } = renderRoute('/owner/store')
+
+    await user.type(await screen.findByLabelText(/PIN 변경/), '4321')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+
+    expect(await screen.findByText('저장했어요. 다음 추천부터 반영돼요')).toBeInTheDocument()
+    expect(db.storePin).toBe('4321')
+  })
 })
