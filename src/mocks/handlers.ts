@@ -135,7 +135,9 @@ export const handlers = [
     const store = db.stores.find((s) => s.id === params.id)
     if (!store) return fail(403, 'FORBIDDEN', '남의 매장')
 
-    const { pin, ...update } = (await request.json()) as StoreUpdate
+    // 실제 서버처럼 PIN 은 pinCode 로만 받는다 (모르는 필드는 무시)
+    const { pinCode: pin, ...update } = (await request.json()) as StoreUpdate & { pin?: unknown }
+    delete update.pin
     if (update.benefitText !== undefined && (update.benefitText.trim().length === 0 || update.benefitText.length > 40)) {
       return fail(400, 'VALIDATION_FAILED', '혜택 문구는 1~40자', { field: 'benefitText' })
     }

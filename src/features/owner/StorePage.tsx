@@ -48,7 +48,7 @@ function StoreForm({ store }: { store: OwnerStore }) {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()
     const { id: _id, ...rest } = form
-    const body: StoreUpdate = { ...rest, ...(pin ? { pin } : {}) }
+    const body: StoreUpdate = { ...rest, ...(pin ? { pinCode: pin } : {}) }
     update.mutate(body, {
       onSuccess: () => {
         setPin('')

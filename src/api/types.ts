@@ -41,7 +41,8 @@ export interface OwnerStore {
   paused: boolean
 }
 
-export type StoreUpdate = Partial<Omit<OwnerStore, 'id'>> & { pin?: string }
+/** 서버 UpdateOwnerStoreRequest: PIN 은 pinCode 로 보낸다 (pin 은 서버가 모르는 필드라 무시된다) */
+export type StoreUpdate = Partial<Omit<OwnerStore, 'id'>> & { pinCode?: string }
 
 export interface DailyStat {
   date: string // YYYY-MM-DD
