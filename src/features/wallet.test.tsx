@@ -1,7 +1,9 @@
 import { act, screen, within } from '@testing-library/react'
+import { HttpResponse, http } from 'msw'
 import { describe, expect, it } from 'vitest'
 import { auth } from '../lib/auth'
 import { DEMO, db } from '../mocks/db'
+import { server } from '../mocks/node'
 import { renderRoute, signIn, signInAsDriver } from '../test/render'
 
 describe('카카오 로그인 (콜백)', () => {
@@ -157,6 +159,21 @@ describe('연결된 차 관리 (Spec REQ-P8)', () => {
     await user.click(within(dialog).getByRole('button', { name: '연결 해제' }))
 
     expect(await screen.findByText('연결된 차가 없어요')).toBeInTheDocument()
+  })
+
+  it('서버가 차 이름 없이 긴 기기 ID 만 주면 끝 4자리로 짧게 부른다', async () => {
+    await signInAsDriver()
+    server.use(
+      http.get('*/v1/me/devices', () =>
+        HttpResponse.json({ devices: [{ deviceId: 'dev_559b9a0cdfbb421a8b8cd20116dd8430', linkedAt: '2026-11-07T10:00:00Z' }] }),
+      ),
+    )
+    const { user } = renderRoute('/settings')
+
+    expect(await screen.findByText('차량 · 8430')).toBeInTheDocument()
+    expect(screen.queryByText(/dev_559b/)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '해제' }))
+    expect(within(screen.getByRole('dialog', { name: '연결 해제' })).getByText('차량 · 8430 연결을 해제할까요?')).toBeInTheDocument()
   })
 
   it('로그아웃하면 세션을 폐기하고 로그인 화면으로 돌아간다', async () => {

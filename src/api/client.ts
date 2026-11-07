@@ -32,12 +32,18 @@ function unwrapItem<T>(data: unknown, key: string): T {
   return data as T
 }
 
+/** 서버는 차 이름 없이 deviceId(dev_ + 32자)만 준다 → 끝 4자리로 짧게 부른다 */
+export function deviceLabel(id: string): string {
+  const suffix = id.replace(/^dev_/, '').slice(-4).toUpperCase()
+  return suffix ? `차량 · ${suffix}` : '내 차'
+}
+
 function normalizeDevice(raw: LinkedDevice & { deviceId?: string }): LinkedDevice {
   const id = raw.id ?? raw.deviceId ?? ''
   return {
     ...raw,
     id,
-    label: raw.label || id || '내 차',
+    label: raw.label || deviceLabel(id),
   }
 }
 

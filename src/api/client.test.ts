@@ -154,7 +154,7 @@ describe('응답 래핑 호환', () => {
     expect(coupons).toHaveLength(db.coupons.length)
 
     const devices = await api.myDevices()
-    expect(devices).toEqual([{ deviceId: 'car-9', id: 'car-9', label: 'car-9', linkedAt: '2026-11-01T00:00:00Z' }])
+    expect(devices).toEqual([{ deviceId: 'car-9', id: 'car-9', label: '차량 · AR-9', linkedAt: '2026-11-01T00:00:00Z' }])
 
     const stores = await api.ownerStores()
     expect(Array.isArray(stores)).toBe(true)
