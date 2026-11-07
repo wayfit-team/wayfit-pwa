@@ -88,6 +88,21 @@ describe('페어링 (Spec REQ-B15, B16, EDGE-B5)', () => {
   })
 })
 
+describe('쿠폰 내용', () => {
+  it('서버가 주는 발급 시점 매장 이름·혜택(storeNameSnapshot·benefitSnapshot)을 보여준다', async () => {
+    await signIn()
+    const coffee = (await api.myCoupons()).find((c) => c.id === 'c-coffee')
+    expect(coffee).toMatchObject({ storeName: '광교 모퉁이커피', benefit: '아메리카노 1잔 무료' })
+    expect(coffee).not.toHaveProperty('storeNameSnapshot')
+  })
+
+  it('사용 처리 응답의 쿠폰도 매장 이름·혜택을 채운다', async () => {
+    await signIn()
+    const redeemed = await api.redeem('c-coffee', DEMO.storePin)
+    expect(redeemed).toMatchObject({ storeName: '광교 모퉁이커피', benefit: '아메리카노 1잔 무료' })
+  })
+})
+
 describe('쿠폰 사용 처리 (Spec REQ-B13, EDGE-B6)', () => {
   it('PIN이 맞으면 사용 완료, 같은 쿠폰을 다시 쓰면 409', async () => {
     await signIn()

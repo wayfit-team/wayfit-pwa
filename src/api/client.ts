@@ -41,11 +41,23 @@ function normalizeDevice(raw: LinkedDevice & { deviceId?: string }): LinkedDevic
   }
 }
 
-function normalizeCoupon(raw: Coupon & { benefitText?: string }): Coupon {
+/** 서버 CouponDto: 매장 이름·혜택은 발급 시점 값(…Snapshot)으로 내려온다 */
+type CouponDto = Omit<Coupon, 'storeName' | 'benefit' | 'redeemedAt'> & {
+  storeNameSnapshot?: string
+  benefitSnapshot?: string
+  storeName?: string
+  benefit?: string
+  benefitText?: string
+  redeemedAt?: string | null
+}
+
+function normalizeCoupon(raw: CouponDto): Coupon {
+  const { storeNameSnapshot, benefitSnapshot, benefitText, storeName, benefit, redeemedAt, ...rest } = raw
   return {
-    ...raw,
-    benefit: raw.benefit ?? raw.benefitText ?? '',
-    redeemedAt: raw.redeemedAt ?? undefined,
+    ...rest,
+    storeName: storeNameSnapshot ?? storeName ?? '',
+    benefit: benefitSnapshot ?? benefit ?? benefitText ?? '',
+    redeemedAt: redeemedAt ?? undefined,
   }
 }
 
@@ -91,9 +103,9 @@ export const api = {
     unwrapList<LinkedDevice>(await request('GET', '/me/devices', 'session'), 'devices').map(normalizeDevice),
   unlinkDevice: (id: string) => request<void>('DELETE', `/me/devices/${id}`, 'session'),
   myCoupons: async (): Promise<Coupon[]> =>
-    unwrapList<Coupon>(await request('GET', '/me/coupons', 'session'), 'coupons').map(normalizeCoupon),
+    unwrapList<CouponDto>(await request('GET', '/me/coupons', 'session'), 'coupons').map(normalizeCoupon),
   redeem: async (couponId: string, pin: string): Promise<Coupon> =>
-    normalizeCoupon(unwrapItem<Coupon>(await request('POST', `/coupons/${couponId}/redeem`, 'session', { pin }), 'coupon')),
+    normalizeCoupon(unwrapItem<CouponDto>(await request('POST', `/coupons/${couponId}/redeem`, 'session', { pin }), 'coupon')),
 
   // 사장님
   ownerStores: async (): Promise<OwnerStore[]> =>

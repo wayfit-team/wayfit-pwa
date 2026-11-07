@@ -32,7 +32,12 @@ function randomId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-const publicCoupon = ({ storeId: _storeId, ...coupon }: (typeof db.coupons)[number]) => coupon
+/** 실제 서버 CouponDto 와 같은 모양으로 내려준다 (매장 이름·혜택은 …Snapshot) */
+const publicCoupon = ({ storeName, benefit, ...coupon }: (typeof db.coupons)[number]) => ({
+  ...coupon,
+  storeNameSnapshot: storeName,
+  benefitSnapshot: benefit,
+})
 
 export const handlers = [
   // ── 카카오 로그인 (백엔드 POST /v1/auth/kakao, /v1/auth/logout) ──
